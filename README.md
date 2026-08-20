@@ -26,8 +26,7 @@ python -m http.server 4173
 
 按 [`supabase/SETUP.md`](./supabase/SETUP.md) 完成免费 Supabase 项目、唯一站主账号、Storage bucket 和前端发布密钥配置。
 
-已经运行过旧版数据库脚本的项目，需要再执行一次
-[`supabase/migration-v2-site-settings.sql`](./supabase/migration-v2-site-settings.sql)，才能在管理后台保存网易云歌单。
+网易云歌单设置复用现有 `tracks` 表的站主写入权限，不需要执行额外数据库迁移；专用设置记录不会出现在普通歌曲列表中。
 
 网易云会员权益不会通过网页转移给访客；外链播放器中的可播放范围仍由网易云按照访问者账号和曲目版权决定。
 

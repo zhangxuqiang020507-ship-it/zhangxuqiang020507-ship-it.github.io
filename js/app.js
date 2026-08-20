@@ -1,6 +1,7 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/+esm";
 
 const config = window.SITE_CONFIG ?? {};
+const NETEASE_SETTING_ARTIST = "__SITE_NETEASE_PLAYLIST__";
 const isConfigured = Boolean(
   config.supabaseUrl?.startsWith("https://") &&
   config.supabasePublishableKey &&
@@ -299,6 +300,14 @@ function parseNeteasePlaylist(value) {
   return pathMatch?.[1] || "";
 }
 
+function extractNeteaseSetting(rows) {
+  const setting = rows.find(track => track.artist === NETEASE_SETTING_ARTIST);
+  state.settings.netease_playlist = setting
+    ? parseNeteasePlaylist(setting.audio_url)
+    : String(config.neteasePlaylistId || "");
+  return rows.filter(track => track.artist !== NETEASE_SETTING_ARTIST);
+}
+
 function renderHomePreviews() {
   const note = state.notes[0];
   els.homeNotePreview.textContent = note?.body || "今天也捡到了一点好看的光";
@@ -443,22 +452,17 @@ async function loadPublicData() {
     renderPublic();
     return;
   }
-  const [notesResult, photosResult, tracksResult, commentsResult, settingsResult] = await Promise.all([
+  const [notesResult, photosResult, tracksResult, commentsResult] = await Promise.all([
     supabase.from("notes").select("id,body,mood,published,created_at,updated_at").order("created_at", { ascending: false }),
     supabase.from("photos").select("id,title,caption,image_url,shot_at,location,published,sort_order,created_at").order("sort_order").order("created_at", { ascending: false }),
     supabase.from("tracks").select("id,title,artist,audio_url,cover_url,enabled,sort_order,created_at").order("sort_order").order("created_at"),
-    supabase.from("comments").select("id,target_type,target_id,nickname,content,created_at").order("created_at", { ascending: false }),
-    supabase.from("site_settings").select("key,value")
+    supabase.from("comments").select("id,target_type,target_id,nickname,content,created_at").order("created_at", { ascending: false })
   ]);
   const failure = [notesResult, photosResult, tracksResult, commentsResult].find(result => result.error);
   if (failure) toast("网站内容暂时没有加载完整，请稍后再试。", "error");
   state.notes = notesResult.data ?? [];
   state.photos = photosResult.data ?? [];
-  state.tracks = tracksResult.data ?? [];
-  state.settings = {
-    netease_playlist: String(config.neteasePlaylistId || ""),
-    ...Object.fromEntries((settingsResult.data ?? []).map(item => [item.key, item.value]))
-  };
+  state.tracks = extractNeteaseSetting(tracksResult.data ?? []);
   state.publicComments = commentsResult.data ?? [];
   renderPublic();
 }
@@ -605,12 +609,11 @@ async function openAdmin() {
 
 async function loadAdminData() {
   if (!state.isAdmin) return;
-  const [notesResult, photosResult, tracksResult, commentsResult, settingsResult] = await Promise.all([
+  const [notesResult, photosResult, tracksResult, commentsResult] = await Promise.all([
     supabase.from("notes").select("*").order("created_at", { ascending: false }),
     supabase.from("photos").select("*").order("sort_order").order("created_at", { ascending: false }),
     supabase.from("tracks").select("*").order("sort_order").order("created_at"),
-    supabase.from("comments").select("*").order("created_at", { ascending: false }),
-    supabase.from("site_settings").select("key,value")
+    supabase.from("comments").select("*").order("created_at", { ascending: false })
   ]);
   const failure = [notesResult, photosResult, tracksResult, commentsResult].find(result => result.error);
   if (failure) {
@@ -619,14 +622,8 @@ async function loadAdminData() {
   }
   state.admin.notes = notesResult.data;
   state.admin.photos = photosResult.data;
-  state.admin.tracks = tracksResult.data;
+  state.admin.tracks = extractNeteaseSetting(tracksResult.data);
   state.admin.comments = commentsResult.data;
-  if (!settingsResult.error) {
-    state.settings = {
-      netease_playlist: String(config.neteasePlaylistId || ""),
-      ...Object.fromEntries((settingsResult.data ?? []).map(item => [item.key, item.value]))
-    };
-  }
   els.neteaseForm.elements.playlist.value = state.settings.netease_playlist || "";
   renderAdmin();
 }
@@ -1054,19 +1051,44 @@ function setupNeteaseForm() {
     const playlistId = parseNeteasePlaylist(raw);
     if (raw && !playlistId) return toast("没有识别出歌单 ID，请粘贴歌单分享链接或输入纯数字 ID。", "error");
     setBusy(els.neteaseForm, true);
-    const result = await supabase
-      .from("site_settings")
-      .upsert({ key: "netease_playlist", value: playlistId }, { onConflict: "key" });
-    setBusy(els.neteaseForm, false);
-    if (result.error) {
-      const missingTable = /site_settings|schema cache|could not find/i.test(result.error.message || "");
-      return toast(missingTable ? "网易云设置表还没有创建，需要先执行本次数据库升级。" : "网易云歌单没有保存成功。", "error");
+    try {
+      const lookup = await supabase
+        .from("tracks")
+        .select("id")
+        .eq("artist", NETEASE_SETTING_ARTIST)
+        .order("created_at", { ascending: true });
+      if (lookup.error) throw lookup.error;
+      const [primary, ...duplicates] = lookup.data ?? [];
+      const payload = {
+        title: "网易云歌单设置",
+        artist: NETEASE_SETTING_ARTIST,
+        audio_url: playlistId ? `https://music.163.com/playlist?id=${playlistId}` : "https://music.163.com/",
+        audio_storage_path: null,
+        cover_url: null,
+        cover_storage_path: null,
+        enabled: true,
+        sort_order: 2147483000
+      };
+      const result = primary
+        ? await supabase.from("tracks").update(payload).eq("id", primary.id)
+        : await supabase.from("tracks").insert(payload);
+      if (result.error) throw result.error;
+      if (duplicates.length) {
+        const duplicateIds = duplicates.map(item => item.id);
+        const cleanup = await supabase.from("tracks").delete().in("id", duplicateIds);
+        if (cleanup.error) console.warn("Could not remove duplicate NetEase settings", cleanup.error.message);
+      }
+      state.settings.netease_playlist = playlistId;
+      els.neteaseForm.elements.playlist.value = playlistId;
+      renderNetease();
+      renderHomePreviews();
+      toast(playlistId ? "网易云歌单已经连接。" : "网易云歌单连接已经清除。", "success");
+    } catch (error) {
+      console.error(error);
+      toast("网易云歌单没有保存成功，请重新登录后再试。", "error");
+    } finally {
+      setBusy(els.neteaseForm, false);
     }
-    state.settings.netease_playlist = playlistId;
-    els.neteaseForm.elements.playlist.value = playlistId;
-    renderNetease();
-    renderHomePreviews();
-    toast(playlistId ? "网易云歌单已经连接。" : "网易云歌单连接已经清除。", "success");
   });
 }
 

@@ -8,15 +8,6 @@ create table public.site_admins (
   created_at timestamptz not null default now()
 );
 
-create table public.site_settings (
-  key text primary key check (char_length(key) between 1 and 80),
-  value text not null check (char_length(value) <= 2048),
-  updated_at timestamptz not null default now()
-);
-
-insert into public.site_settings (key, value)
-values ('netease_playlist', '8618410306');
-
 create table public.notes (
   id uuid primary key default gen_random_uuid(),
   body text not null check (char_length(trim(body)) between 1 and 1000),
@@ -91,9 +82,6 @@ create trigger photos_set_updated_at before update on public.photos
 for each row execute function public.set_updated_at();
 create trigger tracks_set_updated_at before update on public.tracks
 for each row execute function public.set_updated_at();
-create trigger site_settings_set_updated_at before update on public.site_settings
-for each row execute function public.set_updated_at();
-
 create or replace function public.mark_comment_reviewed()
 returns trigger
 language plpgsql
@@ -155,7 +143,6 @@ revoke all on function public.is_site_admin() from public;
 grant execute on function public.is_site_admin() to anon, authenticated;
 
 alter table public.site_admins enable row level security;
-alter table public.site_settings enable row level security;
 alter table public.notes enable row level security;
 alter table public.photos enable row level security;
 alter table public.tracks enable row level security;
@@ -164,20 +151,6 @@ alter table public.comments enable row level security;
 create policy "admin can read own membership"
 on public.site_admins for select to authenticated
 using (user_id = (select auth.uid()));
-
-create policy "public can read site settings"
-on public.site_settings for select to anon, authenticated
-using (true);
-create policy "admin can create site settings"
-on public.site_settings for insert to authenticated
-with check ((select public.is_site_admin()));
-create policy "admin can update site settings"
-on public.site_settings for update to authenticated
-using ((select public.is_site_admin()))
-with check ((select public.is_site_admin()));
-create policy "admin can delete site settings"
-on public.site_settings for delete to authenticated
-using ((select public.is_site_admin()));
 
 create policy "public can read published notes"
 on public.notes for select to anon, authenticated
@@ -239,10 +212,8 @@ create policy "admin can delete comments"
 on public.comments for delete to authenticated
 using ((select public.is_site_admin()));
 
-revoke all on public.site_admins, public.site_settings, public.notes, public.photos, public.tracks, public.comments from anon, authenticated;
+revoke all on public.site_admins, public.notes, public.photos, public.tracks, public.comments from anon, authenticated;
 grant select on public.site_admins to authenticated;
-grant select on public.site_settings to anon, authenticated;
-grant insert, update, delete on public.site_settings to authenticated;
 grant select on public.notes, public.photos, public.tracks to anon, authenticated;
 grant insert, update, delete on public.notes, public.photos, public.tracks to authenticated;
 grant select on public.comments to anon, authenticated;
