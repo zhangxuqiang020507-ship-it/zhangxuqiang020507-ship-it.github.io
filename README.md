@@ -1,13 +1,14 @@
 # 张旭强的小站
 
-奶油手账风个人网站，部署在 GitHub Pages。包括：
+奶油手账风个人网站，部署在 GitHub Pages。首页使用四张入口卡片，四个板块分别打开独立的大界面。包括：
 
 - 碎碎念
 - 摄影作品与照片评论
 - 访客留言板
-- 在线歌单播放器
+- 网易云歌单外链播放器与小站自有歌单
 - 仅站主可用的登录和管理桌
 - Supabase Auth、Postgres RLS 与 Storage 权限
+- JPG/PNG/WebP/AVIF/HEIC 照片上传与大图自动压缩
 
 ## 本地预览
 
@@ -24,6 +25,11 @@ python -m http.server 4173
 ## 后端设置
 
 按 [`supabase/SETUP.md`](./supabase/SETUP.md) 完成免费 Supabase 项目、唯一站主账号、Storage bucket 和前端发布密钥配置。
+
+已经运行过旧版数据库脚本的项目，需要再执行一次
+[`supabase/migration-v2-site-settings.sql`](./supabase/migration-v2-site-settings.sql)，才能在管理后台保存网易云歌单。
+
+网易云会员权益不会通过网页转移给访客；外链播放器中的可播放范围仍由网易云按照访问者账号和曲目版权决定。
 
 ## 安全边界
 

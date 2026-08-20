@@ -21,6 +21,7 @@ const state = {
   notes: [],
   photos: [],
   tracks: [],
+  settings: { netease_playlist: String(config.neteasePlaylistId || "") },
   publicComments: [],
   admin: { notes: [], photos: [], tracks: [], comments: [] },
   currentTrack: 0,
@@ -77,6 +78,24 @@ const els = {
   refreshComments: $("#refreshComments"),
   toastRegion: $("#toastRegion")
 };
+
+Object.assign(els, {
+  views: $$(".page-view"),
+  routeLinks: $$('[data-route]'),
+  homeNotePreview: $("#homeNotePreview"),
+  homeNoteDate: $("#homeNoteDate"),
+  homePhotoCount: $("#homePhotoCount"),
+  homePhotoPreview: $("#homePhotoPreview"),
+  homeTrackPreview: $("#homeTrackPreview"),
+  neteasePanel: $("#neteasePanel"),
+  neteaseEmpty: $("#neteaseEmpty"),
+  neteasePlayer: $("#neteasePlayer"),
+  neteaseOpen: $("#neteaseOpen"),
+  neteaseForm: $("#neteaseForm"),
+  photoFileLabel: $("#photoFileLabel"),
+  photoUploadHint: $("#photoUploadHint"),
+  photoUploadPreview: $("#photoUploadPreview")
+});
 
 function icon(id) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -185,19 +204,26 @@ function setupNavigation() {
     const open = els.siteNav.classList.toggle("open");
     els.menuToggle.setAttribute("aria-expanded", String(open));
   });
-  $$("a", els.siteNav).forEach(link => link.addEventListener("click", () => {
+  els.routeLinks.forEach(link => link.addEventListener("click", () => {
     els.siteNav.classList.remove("open");
     els.menuToggle.setAttribute("aria-expanded", "false");
   }));
 
-  const links = new Map($$("a[href^='#']", els.siteNav).map(link => [link.getAttribute("href").slice(1), link]));
-  const observer = new IntersectionObserver(entries => {
-    const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-    if (!visible) return;
-    links.forEach(link => link.classList.remove("active"));
-    links.get(visible.target.id)?.classList.add("active");
-  }, { rootMargin: "-18% 0px -60%", threshold: [0.05, 0.2, 0.5] });
-  [$("#top"), $("#notes"), $("#gallery"), $("#guestbook"), $("#music")].forEach(section => section && observer.observe(section));
+  const showRoute = () => {
+    const requested = location.hash.replace(/^#\/?/, "").split(/[?&]/)[0] || "home";
+    const route = ["home", "notes", "gallery", "guestbook", "music"].includes(requested) ? requested : "home";
+    els.views.forEach(view => {
+      const active = view.dataset.view === route;
+      view.classList.toggle("active", active);
+      view.hidden = !active;
+    });
+    $$("[data-route]", els.siteNav).forEach(link => link.classList.toggle("active", link.dataset.route === route));
+    document.body.dataset.view = route;
+    document.title = route === "home" ? "张旭强的小站" : `${({ notes: "碎碎念", gallery: "摄影作品", guestbook: "留言板", music: "听歌" })[route]} · 张旭强的小站`;
+    window.scrollTo({ top: 0, behavior: "auto" });
+  };
+  window.addEventListener("hashchange", showRoute);
+  showRoute();
 }
 
 function setupDialogs() {
@@ -262,6 +288,46 @@ function renderGuestbook() {
     ]);
     els.guestbookList.append(item);
   }
+}
+
+function parseNeteasePlaylist(value) {
+  const text = String(value || "").trim();
+  if (/^\d{4,20}$/.test(text)) return text;
+  const directMatch = text.match(/[?&#]id=(\d{4,20})/i);
+  if (directMatch) return directMatch[1];
+  const pathMatch = text.match(/playlist\/(\d{4,20})/i);
+  return pathMatch?.[1] || "";
+}
+
+function renderHomePreviews() {
+  const note = state.notes[0];
+  els.homeNotePreview.textContent = note?.body || "今天也捡到了一点好看的光";
+  els.homeNoteDate.textContent = note ? formatDate(note.created_at) : "等第一张便签贴上来";
+  els.homePhotoCount.textContent = `${state.photos.filter(photo => !photo.preview).length} 张`;
+  const frames = $$('i', els.homePhotoPreview);
+  frames.forEach((frame, index) => {
+    const photo = state.photos[index];
+    frame.style.backgroundImage = photo ? `url("${String(photo.image_url).replace(/["\\]/g, "")}")` : "";
+    frame.classList.toggle("has-photo", Boolean(photo));
+  });
+  const playlistId = parseNeteasePlaylist(state.settings.netease_playlist);
+  els.homeTrackPreview.textContent = playlistId
+    ? "网易云歌单已连接"
+    : state.tracks[0]?.title || "我的网易云与小站歌单";
+}
+
+function renderNetease() {
+  const playlistId = parseNeteasePlaylist(state.settings.netease_playlist);
+  els.neteasePanel.hidden = !playlistId;
+  els.neteaseEmpty.hidden = Boolean(playlistId);
+  if (!playlistId) {
+    els.neteasePlayer.removeAttribute("src");
+    return;
+  }
+  const embedUrl = `https://music.163.com/outchain/player?type=0&id=${playlistId}&auto=0&height=430`;
+  if (els.neteasePlayer.src !== embedUrl) els.neteasePlayer.src = embedUrl;
+  els.neteaseOpen.href = `https://music.163.com/#/playlist?id=${playlistId}`;
+  if (els.neteaseForm) els.neteaseForm.elements.playlist.value = state.settings.netease_playlist || playlistId;
 }
 
 function openPhoto(photo) {
@@ -377,17 +443,22 @@ async function loadPublicData() {
     renderPublic();
     return;
   }
-  const [notesResult, photosResult, tracksResult, commentsResult] = await Promise.all([
+  const [notesResult, photosResult, tracksResult, commentsResult, settingsResult] = await Promise.all([
     supabase.from("notes").select("id,body,mood,published,created_at,updated_at").order("created_at", { ascending: false }),
     supabase.from("photos").select("id,title,caption,image_url,shot_at,location,published,sort_order,created_at").order("sort_order").order("created_at", { ascending: false }),
     supabase.from("tracks").select("id,title,artist,audio_url,cover_url,enabled,sort_order,created_at").order("sort_order").order("created_at"),
-    supabase.from("comments").select("id,target_type,target_id,nickname,content,created_at").order("created_at", { ascending: false })
+    supabase.from("comments").select("id,target_type,target_id,nickname,content,created_at").order("created_at", { ascending: false }),
+    supabase.from("site_settings").select("key,value")
   ]);
   const failure = [notesResult, photosResult, tracksResult, commentsResult].find(result => result.error);
   if (failure) toast("网站内容暂时没有加载完整，请稍后再试。", "error");
   state.notes = notesResult.data ?? [];
   state.photos = photosResult.data ?? [];
   state.tracks = tracksResult.data ?? [];
+  state.settings = {
+    netease_playlist: String(config.neteasePlaylistId || ""),
+    ...Object.fromEntries((settingsResult.data ?? []).map(item => [item.key, item.value]))
+  };
   state.publicComments = commentsResult.data ?? [];
   renderPublic();
 }
@@ -397,6 +468,8 @@ function renderPublic() {
   renderPhotos();
   renderGuestbook();
   renderPlaylist();
+  renderHomePreviews();
+  renderNetease();
 }
 
 async function submitPublicComment(form, targetType, targetId = null) {
@@ -458,13 +531,22 @@ function setupAuth() {
       await openAdmin();
       return;
     }
-    els.loginMessage.textContent = isConfigured ? "" : "动态后台尚未连接，暂时不能登录。";
+    const unsafeOrigin = !window.isSecureContext && !["localhost", "127.0.0.1"].includes(location.hostname);
+    els.loginMessage.textContent = !isConfigured
+      ? "动态后台尚未连接，暂时不能登录。"
+      : unsafeOrigin
+        ? "当前域名的 HTTPS 证书还未生效。为保护密码，请修复 HTTPS 后再登录。"
+        : "";
     els.loginDialog.showModal();
   });
   els.adminButton.addEventListener("click", openAdmin);
   els.loginForm.addEventListener("submit", async event => {
     event.preventDefault();
     if (!requireBackend()) return;
+    if (!window.isSecureContext && !["localhost", "127.0.0.1"].includes(location.hostname)) {
+      els.loginMessage.textContent = "已阻止在不安全的 HTTP 页面提交站长密码，请先修复 HTTPS。";
+      return;
+    }
     const form = new FormData(els.loginForm);
     setBusy(els.loginForm, true);
     els.loginMessage.textContent = "";
@@ -523,11 +605,12 @@ async function openAdmin() {
 
 async function loadAdminData() {
   if (!state.isAdmin) return;
-  const [notesResult, photosResult, tracksResult, commentsResult] = await Promise.all([
+  const [notesResult, photosResult, tracksResult, commentsResult, settingsResult] = await Promise.all([
     supabase.from("notes").select("*").order("created_at", { ascending: false }),
     supabase.from("photos").select("*").order("sort_order").order("created_at", { ascending: false }),
     supabase.from("tracks").select("*").order("sort_order").order("created_at"),
-    supabase.from("comments").select("*").order("created_at", { ascending: false })
+    supabase.from("comments").select("*").order("created_at", { ascending: false }),
+    supabase.from("site_settings").select("key,value")
   ]);
   const failure = [notesResult, photosResult, tracksResult, commentsResult].find(result => result.error);
   if (failure) {
@@ -538,6 +621,13 @@ async function loadAdminData() {
   state.admin.photos = photosResult.data;
   state.admin.tracks = tracksResult.data;
   state.admin.comments = commentsResult.data;
+  if (!settingsResult.error) {
+    state.settings = {
+      netease_playlist: String(config.neteasePlaylistId || ""),
+      ...Object.fromEntries((settingsResult.data ?? []).map(item => [item.key, item.value]))
+    };
+  }
+  els.neteaseForm.elements.playlist.value = state.settings.netease_playlist || "";
   renderAdmin();
 }
 
@@ -636,12 +726,98 @@ function editPhoto(photo) {
   els.photoForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+function makeUploadToken() {
+  if (typeof globalThis.crypto?.randomUUID === "function") return globalThis.crypto.randomUUID();
+  if (typeof globalThis.crypto?.getRandomValues === "function") {
+    const bytes = globalThis.crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = [...bytes].map(byte => byte.toString(16).padStart(2, "0")).join("");
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
+function fileExtension(file) {
+  const fromName = (file.name.split(".").pop() || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const fromType = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/avif": "avif", "audio/mpeg": "mp3", "audio/mp4": "m4a", "audio/x-m4a": "m4a", "audio/ogg": "ogg", "audio/wav": "wav" })[file.type];
+  return fromType || fromName || "bin";
+}
+
+async function compressBrowserImage(file, maxDimension = 3600, quality = .86) {
+  let source;
+  let release = () => {};
+  if (typeof createImageBitmap === "function") {
+    source = await createImageBitmap(file, { imageOrientation: "from-image" });
+    release = () => source.close();
+  } else {
+    const url = URL.createObjectURL(file);
+    source = await new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error("浏览器无法读取这张照片"));
+      image.src = url;
+    });
+    release = () => URL.revokeObjectURL(url);
+  }
+  try {
+    const width = source.width || source.naturalWidth;
+    const height = source.height || source.naturalHeight;
+    const scale = Math.min(1, maxDimension / Math.max(width, height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
+    const context = canvas.getContext("2d", { alpha: false });
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(source, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", quality));
+    if (!blob) throw new Error("照片压缩失败，请换一张照片再试");
+    const base = file.name.replace(/\.[^.]+$/, "") || "photo";
+    return new File([blob], `${base}.jpg`, { type: "image/jpeg", lastModified: file.lastModified });
+  } finally {
+    release();
+  }
+}
+
+async function preparePhotoFile(file) {
+  if (!file || file.size === 0) return null;
+  if (file.size > 60 * 1024 * 1024) throw new Error("原始照片不能超过 60 MB");
+  const extension = fileExtension(file);
+  const isHeic = ["heic", "heif"].includes(extension) || ["image/heic", "image/heif"].includes(file.type);
+  let prepared = file;
+  if (isHeic) {
+    els.photoUploadHint.textContent = "正在把 HEIC 转成网页可显示的 JPG……";
+    const module = await import("https://cdn.jsdelivr.net/npm/heic2any@0.0.4/+esm");
+    const converted = await module.default({ blob: file, toType: "image/jpeg", quality: .9 });
+    const blob = Array.isArray(converted) ? converted[0] : converted;
+    prepared = new File([blob], `${file.name.replace(/\.[^.]+$/, "") || "photo"}.jpg`, { type: "image/jpeg", lastModified: file.lastModified });
+  }
+  const allowed = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+  if (!allowed.includes(prepared.type)) throw new Error("暂不支持这种照片格式；相机 RAW/NEF 请先导出为 JPG");
+  if (prepared.size > 11 * 1024 * 1024) {
+    els.photoUploadHint.textContent = "照片较大，正在自动压缩……";
+    prepared = await compressBrowserImage(prepared);
+  }
+  if (prepared.size > 12 * 1024 * 1024) throw new Error("自动压缩后仍超过 12 MB，请先导出较小尺寸的 JPG");
+  return prepared;
+}
+
+function friendlyUploadError(error) {
+  const message = String(error?.message || "");
+  if (/row-level security|unauthorized|jwt|token/i.test(message)) return "站长登录状态可能已经过期，请退出后重新登录";
+  if (/bucket.*not found/i.test(message)) return "照片存储桶不存在，请检查 Supabase Storage 设置";
+  if (/mime|content.?type/i.test(message)) return "存储桶不允许这种图片格式";
+  if (/maximum|too large|payload/i.test(message)) return "照片超过存储空间的单文件限制";
+  return message || "照片没有保存成功";
+}
+
 async function uploadFile(bucket, file, folder, maxBytes, allowedTypes) {
   if (!file || file.size === 0) return null;
   if (file.size > maxBytes) throw new Error(`文件不能超过 ${Math.round(maxBytes / 1024 / 1024)} MB`);
   if (!allowedTypes.includes(file.type)) throw new Error("不支持这种文件格式");
-  const extension = (file.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "");
-  const path = `${state.session.user.id}/${folder}/${crypto.randomUUID()}.${extension}`;
+  const extension = fileExtension(file);
+  const path = `${state.session.user.id}/${folder}/${makeUploadToken()}.${extension}`;
   const { error } = await supabase.storage.from(bucket).upload(path, file, { cacheControl: "31536000", upsert: false, contentType: file.type });
   if (error) throw error;
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
@@ -655,6 +831,35 @@ async function removeStoredFile(bucket, path) {
 }
 
 function setupPhotoForm() {
+  const fileInput = els.photoForm.elements.file;
+  let previewUrl = "";
+  const clearPreview = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = "";
+    els.photoUploadPreview.removeAttribute("src");
+    els.photoUploadPreview.hidden = true;
+    els.photoFileLabel.textContent = "选择照片，或拖到这里";
+    els.photoUploadHint.textContent = "支持 JPG、PNG、WebP、AVIF、HEIC；大图自动压缩";
+  };
+  fileInput.addEventListener("change", () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = "";
+    const file = fileInput.files?.[0];
+    if (!file) return clearPreview();
+    els.photoFileLabel.textContent = file.name;
+    els.photoUploadHint.textContent = `${(file.size / 1024 / 1024).toFixed(1)} MB · 保存时自动检查并处理`;
+    const extension = fileExtension(file);
+    if (["heic", "heif"].includes(extension) || ["image/heic", "image/heif"].includes(file.type)) {
+      els.photoUploadPreview.hidden = true;
+      return;
+    }
+    if (file.type.startsWith("image/")) {
+      previewUrl = URL.createObjectURL(file);
+      els.photoUploadPreview.src = previewUrl;
+      els.photoUploadPreview.hidden = false;
+    }
+  });
+  els.photoForm.addEventListener("reset", () => window.setTimeout(clearPreview, 0));
   els.photoForm.addEventListener("submit", async event => {
     event.preventDefault();
     if (!state.isAdmin) return;
@@ -664,7 +869,7 @@ function setupPhotoForm() {
     let uploaded = null;
     setBusy(els.photoForm, true);
     try {
-      const file = form.get("file");
+      const file = await preparePhotoFile(form.get("file"));
       uploaded = await uploadFile("photos", file, "images", 12 * 1024 * 1024, ["image/jpeg", "image/png", "image/webp", "image/avif"]);
       const imageUrl = uploaded?.url || String(form.get("existingImageUrl") || "");
       if (!imageUrl) throw new Error("请选择一张照片");
@@ -688,7 +893,7 @@ function setupPhotoForm() {
       await refreshAll();
     } catch (error) {
       if (uploaded) await removeStoredFile("photos", uploaded.path);
-      toast(error.message || "照片没有保存成功。", "error");
+      toast(friendlyUploadError(error), "error");
     } finally {
       setBusy(els.photoForm, false);
     }
@@ -841,10 +1046,35 @@ async function refreshAll() {
   await Promise.all([loadPublicData(), loadAdminData()]);
 }
 
+function setupNeteaseForm() {
+  els.neteaseForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!state.isAdmin) return;
+    const raw = String(new FormData(els.neteaseForm).get("playlist") || "").trim();
+    const playlistId = parseNeteasePlaylist(raw);
+    if (raw && !playlistId) return toast("没有识别出歌单 ID，请粘贴歌单分享链接或输入纯数字 ID。", "error");
+    setBusy(els.neteaseForm, true);
+    const result = await supabase
+      .from("site_settings")
+      .upsert({ key: "netease_playlist", value: playlistId }, { onConflict: "key" });
+    setBusy(els.neteaseForm, false);
+    if (result.error) {
+      const missingTable = /site_settings|schema cache|could not find/i.test(result.error.message || "");
+      return toast(missingTable ? "网易云设置表还没有创建，需要先执行本次数据库升级。" : "网易云歌单没有保存成功。", "error");
+    }
+    state.settings.netease_playlist = playlistId;
+    els.neteaseForm.elements.playlist.value = playlistId;
+    renderNetease();
+    renderHomePreviews();
+    toast(playlistId ? "网易云歌单已经连接。" : "网易云歌单连接已经清除。", "success");
+  });
+}
+
 function setupAdminForms() {
   setupNoteForm();
   setupPhotoForm();
   setupTrackForm();
+  setupNeteaseForm();
   els.refreshComments.addEventListener("click", loadAdminData);
   [els.photoForm, els.trackForm].forEach(form => form.addEventListener("reset", () => {
     window.setTimeout(() => $$('input[type="hidden"]', form).forEach(input => { input.value = ""; }), 0);
