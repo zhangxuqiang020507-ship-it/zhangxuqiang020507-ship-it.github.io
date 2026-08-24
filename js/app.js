@@ -317,6 +317,20 @@ function partitionTracks(rows) {
   return { tracks, backgroundTracks };
 }
 
+function configuredBackgroundTracks() {
+  const track = config.defaultBackgroundTrack;
+  if (!track?.audioUrl) return [];
+  return [{
+    id: "site-default-background",
+    title: String(track.title || "小站背景音乐"),
+    artist: String(track.artist || "") || null,
+    audio_url: String(track.audioUrl),
+    enabled: true,
+    sort_order: 0,
+    built_in: true
+  }];
+}
+
 function renderHomePreviews() {
   const note = state.notes[0];
   els.homeNotePreview.textContent = note?.body || "今天也捡到了一点好看的光";
@@ -569,7 +583,7 @@ async function loadPublicData() {
     state.notes = previewData.notes;
     state.photos = previewData.photos;
     state.tracks = [];
-    state.backgroundTracks = [];
+    state.backgroundTracks = configuredBackgroundTracks();
     state.publicComments = [];
     renderPublic();
     return;
@@ -586,7 +600,9 @@ async function loadPublicData() {
   state.photos = photosResult.data ?? [];
   const partitionedTracks = partitionTracks(tracksResult.data ?? []);
   state.tracks = partitionedTracks.tracks;
-  state.backgroundTracks = partitionedTracks.backgroundTracks;
+  state.backgroundTracks = partitionedTracks.backgroundTracks.length
+    ? partitionedTracks.backgroundTracks
+    : configuredBackgroundTracks();
   state.publicComments = commentsResult.data ?? [];
   renderPublic();
 }

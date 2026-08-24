@@ -3,5 +3,10 @@
 window.SITE_CONFIG = Object.freeze({
   supabaseUrl: "https://wutwnfokgwjjpghlcpup.supabase.co",
   supabasePublishableKey: "sb_publishable_oMblIi6QX_xJhJJwG_McdA_o2R6ofAs",
-  ownerDisplayName: "张旭强"
+  ownerDisplayName: "张旭强",
+  defaultBackgroundTrack: {
+    title: "窗边小雨",
+    artist: "张旭强的小站 · 原创",
+    audioUrl: "./assets/audio/window-rain-original.mp3"
+  }
 });
