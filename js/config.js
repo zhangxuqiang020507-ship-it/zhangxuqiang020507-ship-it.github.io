@@ -3,6 +3,5 @@
 window.SITE_CONFIG = Object.freeze({
   supabaseUrl: "https://wutwnfokgwjjpghlcpup.supabase.co",
   supabasePublishableKey: "sb_publishable_oMblIi6QX_xJhJJwG_McdA_o2R6ofAs",
-  ownerDisplayName: "张旭强",
-  neteasePlaylistId: "8618410306"
+  ownerDisplayName: "张旭强"
 });

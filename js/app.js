@@ -1,7 +1,10 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/+esm";
 
 const config = window.SITE_CONFIG ?? {};
-const NETEASE_SETTING_ARTIST = "__SITE_NETEASE_PLAYLIST__";
+const BACKGROUND_TRACK_PREFIX = "__SITE_BACKGROUND__:";
+const SITE_SETTING_PREFIX = "__SITE_";
+const AMBIENT_ENABLED_KEY = "zhangxuqiang_ambient_enabled";
+const AMBIENT_VOLUME_KEY = "zhangxuqiang_ambient_volume";
 const isConfigured = Boolean(
   config.supabaseUrl?.startsWith("https://") &&
   config.supabasePublishableKey &&
@@ -22,10 +25,14 @@ const state = {
   notes: [],
   photos: [],
   tracks: [],
-  settings: { netease_playlist: String(config.neteasePlaylistId || "") },
+  backgroundTracks: [],
   publicComments: [],
-  admin: { notes: [], photos: [], tracks: [], comments: [] },
+  admin: { notes: [], photos: [], tracks: [], backgroundTracks: [], comments: [] },
   currentTrack: 0,
+  backgroundTrack: 0,
+  backgroundAutoplayAttempted: false,
+  backgroundUserPaused: false,
+  resumeBackgroundAfterTrack: false,
   activePhoto: null
 };
 
@@ -68,12 +75,22 @@ const els = {
   playPause: $("#playPause"),
   prevTrack: $("#prevTrack"),
   nextTrack: $("#nextTrack"),
+  backgroundMusicControl: $("#backgroundMusicControl"),
+  backgroundMusicToggle: $("#backgroundMusicToggle"),
+  backgroundMusicIcon: $("#backgroundMusicIcon"),
+  backgroundMusicLabel: $("#backgroundMusicLabel"),
+  backgroundMusicVolume: $("#backgroundMusicVolume"),
+  backgroundAudio: $("#backgroundAudio"),
   noteForm: $("#noteForm"),
   photoForm: $("#photoForm"),
   trackForm: $("#trackForm"),
+  backgroundTrackForm: $("#backgroundTrackForm"),
+  bulkTrackForm: $("#bulkTrackForm"),
+  bulkTrackStatus: $("#bulkTrackStatus"),
   adminNotesList: $("#adminNotesList"),
   adminPhotosList: $("#adminPhotosList"),
   adminTracksList: $("#adminTracksList"),
+  adminBackgroundTracksList: $("#adminBackgroundTracksList"),
   adminCommentsList: $("#adminCommentsList"),
   pendingBadge: $("#pendingBadge"),
   refreshComments: $("#refreshComments"),
@@ -88,11 +105,6 @@ Object.assign(els, {
   homePhotoCount: $("#homePhotoCount"),
   homePhotoPreview: $("#homePhotoPreview"),
   homeTrackPreview: $("#homeTrackPreview"),
-  neteasePanel: $("#neteasePanel"),
-  neteaseEmpty: $("#neteaseEmpty"),
-  neteasePlayer: $("#neteasePlayer"),
-  neteaseOpen: $("#neteaseOpen"),
-  neteaseForm: $("#neteaseForm"),
   photoFileLabel: $("#photoFileLabel"),
   photoUploadHint: $("#photoUploadHint"),
   photoUploadPreview: $("#photoUploadPreview")
@@ -291,21 +303,18 @@ function renderGuestbook() {
   }
 }
 
-function parseNeteasePlaylist(value) {
-  const text = String(value || "").trim();
-  if (/^\d{4,20}$/.test(text)) return text;
-  const directMatch = text.match(/[?&#]id=(\d{4,20})/i);
-  if (directMatch) return directMatch[1];
-  const pathMatch = text.match(/playlist\/(\d{4,20})/i);
-  return pathMatch?.[1] || "";
-}
-
-function extractNeteaseSetting(rows) {
-  const setting = rows.find(track => track.artist === NETEASE_SETTING_ARTIST);
-  state.settings.netease_playlist = setting
-    ? parseNeteasePlaylist(setting.audio_url)
-    : String(config.neteasePlaylistId || "");
-  return rows.filter(track => track.artist !== NETEASE_SETTING_ARTIST);
+function partitionTracks(rows) {
+  const tracks = [];
+  const backgroundTracks = [];
+  for (const track of rows) {
+    const artist = String(track.artist || "");
+    if (artist.startsWith(BACKGROUND_TRACK_PREFIX)) {
+      backgroundTracks.push({ ...track, artist: artist.slice(BACKGROUND_TRACK_PREFIX.length) || null });
+    } else if (!artist.startsWith(SITE_SETTING_PREFIX)) {
+      tracks.push(track);
+    }
+  }
+  return { tracks, backgroundTracks };
 }
 
 function renderHomePreviews() {
@@ -319,24 +328,7 @@ function renderHomePreviews() {
     frame.style.backgroundImage = photo ? `url("${String(photo.image_url).replace(/["\\]/g, "")}")` : "";
     frame.classList.toggle("has-photo", Boolean(photo));
   });
-  const playlistId = parseNeteasePlaylist(state.settings.netease_playlist);
-  els.homeTrackPreview.textContent = playlistId
-    ? "网易云歌单已连接"
-    : state.tracks[0]?.title || "我的网易云与小站歌单";
-}
-
-function renderNetease() {
-  const playlistId = parseNeteasePlaylist(state.settings.netease_playlist);
-  els.neteasePanel.hidden = !playlistId;
-  els.neteaseEmpty.hidden = Boolean(playlistId);
-  if (!playlistId) {
-    els.neteasePlayer.removeAttribute("src");
-    return;
-  }
-  const embedUrl = `https://music.163.com/outchain/player?type=0&id=${playlistId}&auto=0&height=430`;
-  if (els.neteasePlayer.src !== embedUrl) els.neteasePlayer.src = embedUrl;
-  els.neteaseOpen.href = `https://music.163.com/#/playlist?id=${playlistId}`;
-  if (els.neteaseForm) els.neteaseForm.elements.playlist.value = state.settings.netease_playlist || playlistId;
+  els.homeTrackPreview.textContent = state.tracks[0]?.title || state.backgroundTracks[0]?.title || "我的小站歌单与背景音乐";
 }
 
 function openPhoto(photo) {
@@ -420,6 +412,121 @@ function setPlayIcon(playing) {
   els.playPause.setAttribute("aria-label", playing ? "暂停" : "播放");
 }
 
+function readPreference(key, fallback = "") {
+  try {
+    return localStorage.getItem(key) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function savePreference(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // The player still works when private browsing blocks persistent storage.
+  }
+}
+
+function setBackgroundControl(playing, message = "") {
+  const track = state.backgroundTracks[state.backgroundTrack];
+  els.backgroundMusicIcon.setAttribute("href", playing ? "#icon-pause" : "#icon-play");
+  els.backgroundMusicToggle.setAttribute("aria-label", playing ? "暂停背景音乐" : "播放背景音乐");
+  els.backgroundMusicLabel.textContent = message || track?.title || "点一下开启音乐";
+}
+
+function loadBackgroundTrack(index, autoplay = false) {
+  if (!state.backgroundTracks.length) return;
+  state.backgroundTrack = (index + state.backgroundTracks.length) % state.backgroundTracks.length;
+  const track = state.backgroundTracks[state.backgroundTrack];
+  if (els.backgroundAudio.dataset.trackId !== String(track.id) || els.backgroundAudio.dataset.trackUrl !== track.audio_url) {
+    els.backgroundAudio.src = track.audio_url;
+    els.backgroundAudio.dataset.trackId = String(track.id);
+    els.backgroundAudio.dataset.trackUrl = track.audio_url;
+  }
+  els.backgroundAudio.loop = state.backgroundTracks.length === 1;
+  setBackgroundControl(!els.backgroundAudio.paused, track.title);
+  if (autoplay) attemptBackgroundPlayback();
+}
+
+async function attemptBackgroundPlayback(fromVisitor = false) {
+  if (!state.backgroundTracks.length || state.backgroundUserPaused) return false;
+  if (fromVisitor) savePreference(AMBIENT_ENABLED_KEY, "on");
+  try {
+    await els.backgroundAudio.play();
+    setBackgroundControl(true);
+    return true;
+  } catch {
+    setBackgroundControl(false, "点一下开启音乐");
+    return false;
+  }
+}
+
+function renderBackgroundPlayer() {
+  const hasTracks = state.backgroundTracks.length > 0;
+  els.backgroundMusicControl.hidden = !hasTracks;
+  if (!hasTracks) {
+    els.backgroundAudio.pause();
+    els.backgroundAudio.removeAttribute("src");
+    delete els.backgroundAudio.dataset.trackId;
+    delete els.backgroundAudio.dataset.trackUrl;
+    return;
+  }
+  loadBackgroundTrack(Math.min(state.backgroundTrack, state.backgroundTracks.length - 1));
+  if (!state.backgroundAutoplayAttempted && !state.backgroundUserPaused) {
+    state.backgroundAutoplayAttempted = true;
+    attemptBackgroundPlayback();
+  }
+}
+
+function setupBackgroundPlayer() {
+  const savedVolume = Number(readPreference(AMBIENT_VOLUME_KEY, "28"));
+  const volume = Number.isFinite(savedVolume) ? Math.min(100, Math.max(0, savedVolume)) : 28;
+  els.backgroundMusicVolume.value = String(volume);
+  els.backgroundAudio.volume = volume / 100;
+  state.backgroundUserPaused = readPreference(AMBIENT_ENABLED_KEY, "on") === "off";
+
+  els.backgroundMusicToggle.addEventListener("click", async () => {
+    if (!state.backgroundTracks.length) return;
+    if (els.backgroundAudio.paused) {
+      if (!els.audio.paused) {
+        state.resumeBackgroundAfterTrack = false;
+        els.audio.pause();
+      }
+      state.backgroundUserPaused = false;
+      savePreference(AMBIENT_ENABLED_KEY, "on");
+      await attemptBackgroundPlayback(true);
+    } else {
+      state.backgroundUserPaused = true;
+      state.resumeBackgroundAfterTrack = false;
+      savePreference(AMBIENT_ENABLED_KEY, "off");
+      els.backgroundAudio.pause();
+      setBackgroundControl(false);
+    }
+  });
+  els.backgroundMusicVolume.addEventListener("input", () => {
+    const nextVolume = Math.min(100, Math.max(0, Number(els.backgroundMusicVolume.value) || 0));
+    els.backgroundAudio.volume = nextVolume / 100;
+    savePreference(AMBIENT_VOLUME_KEY, String(nextVolume));
+  });
+  els.backgroundAudio.addEventListener("play", () => setBackgroundControl(true));
+  els.backgroundAudio.addEventListener("pause", () => setBackgroundControl(false));
+  els.backgroundAudio.addEventListener("ended", () => {
+    if (state.backgroundTracks.length > 1 && !state.backgroundUserPaused) loadBackgroundTrack(state.backgroundTrack + 1, true);
+  });
+  els.backgroundAudio.addEventListener("error", () => setBackgroundControl(false, "这首背景音乐暂时无法播放"));
+
+  const unlockBackground = event => {
+    if (event.target instanceof Element && event.target.closest("#backgroundMusicToggle")) return;
+    if (event.type === "keydown" && !["Enter", " ", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
+    if (state.backgroundTracks.length && !state.backgroundUserPaused && els.backgroundAudio.paused && els.audio.paused) {
+      attemptBackgroundPlayback(true);
+    }
+  };
+  document.addEventListener("pointerdown", unlockBackground, { passive: true });
+  document.addEventListener("keydown", unlockBackground);
+}
+
 function setupPlayer() {
   els.playPause.addEventListener("click", () => {
     if (!state.tracks.length) return;
@@ -428,8 +535,22 @@ function setupPlayer() {
   });
   els.prevTrack.addEventListener("click", () => loadTrack(state.currentTrack - 1, true));
   els.nextTrack.addEventListener("click", () => loadTrack(state.currentTrack + 1, true));
-  els.audio.addEventListener("play", () => setPlayIcon(true));
-  els.audio.addEventListener("pause", () => setPlayIcon(false));
+  els.audio.addEventListener("play", () => {
+    setPlayIcon(true);
+    if (!els.backgroundAudio.paused) {
+      state.resumeBackgroundAfterTrack = true;
+      els.backgroundAudio.pause();
+    }
+  });
+  els.audio.addEventListener("pause", () => {
+    setPlayIcon(false);
+    window.setTimeout(() => {
+      if (els.audio.paused && state.resumeBackgroundAfterTrack && !state.backgroundUserPaused) {
+        state.resumeBackgroundAfterTrack = false;
+        attemptBackgroundPlayback();
+      }
+    }, 180);
+  });
   els.audio.addEventListener("ended", () => loadTrack(state.currentTrack + 1, true));
   els.audio.addEventListener("loadedmetadata", () => { els.duration.textContent = formatClock(els.audio.duration); });
   els.audio.addEventListener("timeupdate", () => {
@@ -448,6 +569,7 @@ async function loadPublicData() {
     state.notes = previewData.notes;
     state.photos = previewData.photos;
     state.tracks = [];
+    state.backgroundTracks = [];
     state.publicComments = [];
     renderPublic();
     return;
@@ -462,7 +584,9 @@ async function loadPublicData() {
   if (failure) toast("网站内容暂时没有加载完整，请稍后再试。", "error");
   state.notes = notesResult.data ?? [];
   state.photos = photosResult.data ?? [];
-  state.tracks = extractNeteaseSetting(tracksResult.data ?? []);
+  const partitionedTracks = partitionTracks(tracksResult.data ?? []);
+  state.tracks = partitionedTracks.tracks;
+  state.backgroundTracks = partitionedTracks.backgroundTracks;
   state.publicComments = commentsResult.data ?? [];
   renderPublic();
 }
@@ -473,7 +597,7 @@ function renderPublic() {
   renderGuestbook();
   renderPlaylist();
   renderHomePreviews();
-  renderNetease();
+  renderBackgroundPlayer();
 }
 
 async function submitPublicComment(form, targetType, targetId = null) {
@@ -622,9 +746,10 @@ async function loadAdminData() {
   }
   state.admin.notes = notesResult.data;
   state.admin.photos = photosResult.data;
-  state.admin.tracks = extractNeteaseSetting(tracksResult.data);
+  const partitionedTracks = partitionTracks(tracksResult.data);
+  state.admin.tracks = partitionedTracks.tracks;
+  state.admin.backgroundTracks = partitionedTracks.backgroundTracks;
   state.admin.comments = commentsResult.data;
-  els.neteaseForm.elements.playlist.value = state.settings.netease_playlist || "";
   renderAdmin();
 }
 
@@ -638,6 +763,7 @@ function actionButton(name, label, handler, danger = false) {
 function renderAdmin() {
   renderAdminNotes();
   renderAdminPhotos();
+  renderAdminBackgroundTracks();
   renderAdminTracks();
   renderAdminComments();
 }
@@ -906,6 +1032,93 @@ async function deletePhoto(photo) {
   await refreshAll();
 }
 
+function renderAdminBackgroundTracks() {
+  els.adminBackgroundTracksList.replaceChildren();
+  if (!state.admin.backgroundTracks.length) {
+    els.adminBackgroundTracksList.append(make("p", { className: "muted", text: "还没有背景音乐。" }));
+  }
+  state.admin.backgroundTracks.forEach(track => {
+    const media = make("div", { className: "admin-item-media", text: "♪" });
+    const copy = make("div", {}, [
+      make("h4", { text: track.title }),
+      make("p", { text: `${track.artist || "未填写歌手"} · ${track.enabled ? "启用" : "停用"}` })
+    ]);
+    const actions = make("div", { className: "admin-item-actions" }, [
+      actionButton("edit", "编辑", () => editBackgroundTrack(track)),
+      actionButton("trash", "删除", () => deleteBackgroundTrack(track), true)
+    ]);
+    els.adminBackgroundTracksList.append(make("article", { className: "admin-item" }, [media, copy, actions]));
+  });
+}
+
+function editBackgroundTrack(track) {
+  const form = els.backgroundTrackForm.elements;
+  form.id.value = track.id;
+  form.existingAudioUrl.value = track.audio_url;
+  form.existingAudioStoragePath.value = track.audio_storage_path || "";
+  form.title.value = track.title;
+  form.artist.value = track.artist || "";
+  form.audioUrl.value = track.audio_storage_path ? "" : track.audio_url;
+  form.sortOrder.value = track.sort_order || 0;
+  form.enabled.checked = track.enabled;
+  els.backgroundTrackForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function setupBackgroundTrackForm() {
+  els.backgroundTrackForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!state.isAdmin) return;
+    const form = new FormData(els.backgroundTrackForm);
+    const id = String(form.get("id") || "");
+    const oldAudioPath = String(form.get("existingAudioStoragePath") || "");
+    let uploadedAudio = null;
+    setBusy(els.backgroundTrackForm, true);
+    try {
+      uploadedAudio = await uploadFile("music", form.get("audioFile"), "background", 30 * 1024 * 1024, ["audio/mpeg", "audio/mp4", "audio/x-m4a", "audio/ogg", "audio/wav"]);
+      const typedAudioUrl = String(form.get("audioUrl") || "").trim();
+      const audioUrl = uploadedAudio?.url || typedAudioUrl || String(form.get("existingAudioUrl") || "");
+      if (!audioUrl) throw new Error("请上传背景音乐文件，或者填写音频直链");
+      const artist = String(form.get("artist") || "").trim();
+      const payload = {
+        title: String(form.get("title") || "").trim(),
+        artist: `${BACKGROUND_TRACK_PREFIX}${artist}`,
+        audio_url: audioUrl,
+        audio_storage_path: uploadedAudio?.path || (typedAudioUrl ? null : oldAudioPath || null),
+        cover_url: null,
+        cover_storage_path: null,
+        sort_order: Number(form.get("sortOrder") || 0),
+        enabled: form.get("enabled") === "on"
+      };
+      const result = id
+        ? await supabase.from("tracks").update(payload).eq("id", id)
+        : await supabase.from("tracks").insert(payload);
+      if (result.error) throw result.error;
+      if ((uploadedAudio || typedAudioUrl) && oldAudioPath && oldAudioPath !== uploadedAudio?.path) {
+        await removeStoredFile("music", oldAudioPath);
+      }
+      els.backgroundTrackForm.reset();
+      state.backgroundAutoplayAttempted = false;
+      toast("背景音乐已经更新。", "success");
+      await refreshAll();
+    } catch (error) {
+      if (uploadedAudio) await removeStoredFile("music", uploadedAudio.path);
+      toast(error.message || "背景音乐没有保存成功。", "error");
+    } finally {
+      setBusy(els.backgroundTrackForm, false);
+    }
+  });
+}
+
+async function deleteBackgroundTrack(track) {
+  if (!window.confirm(`删除背景音乐《${track.title}》？`)) return;
+  const { error } = await supabase.from("tracks").delete().eq("id", track.id);
+  if (error) return toast("背景音乐删除失败。", "error");
+  await removeStoredFile("music", track.audio_storage_path);
+  state.backgroundAutoplayAttempted = false;
+  toast("背景音乐已经删除。", "success");
+  await refreshAll();
+}
+
 function renderAdminTracks() {
   els.adminTracksList.replaceChildren();
   if (!state.admin.tracks.length) els.adminTracksList.append(make("p", { className: "muted", text: "歌单还空着。" }));
@@ -935,6 +1148,61 @@ function editTrack(track) {
   form.sortOrder.value = track.sort_order || 0;
   form.enabled.checked = track.enabled;
   els.trackForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function trackTitleFromFileName(name) {
+  return String(name || "未命名歌曲")
+    .replace(/\.[^.]+$/, "")
+    .replace(/[_]+/g, " ")
+    .trim()
+    .slice(0, 120) || "未命名歌曲";
+}
+
+function setupBulkTrackForm() {
+  els.bulkTrackForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!state.isAdmin) return;
+    const form = new FormData(els.bulkTrackForm);
+    const files = form.getAll("audioFiles").filter(file => file instanceof File && file.size > 0);
+    if (!files.length) return toast("请先选择要导入的音频文件。", "error");
+    const startOrder = Number(form.get("sortOrder") || 0);
+    const enabled = form.get("enabled") === "on";
+    const failures = [];
+    let saved = 0;
+    setBusy(els.bulkTrackForm, true);
+    for (const [index, file] of files.entries()) {
+      let uploadedAudio = null;
+      els.bulkTrackStatus.textContent = `正在上传 ${index + 1}/${files.length}：${file.name}`;
+      try {
+        uploadedAudio = await uploadFile("music", file, "audio", 30 * 1024 * 1024, ["audio/mpeg", "audio/mp4", "audio/x-m4a", "audio/ogg", "audio/wav"]);
+        const { error } = await supabase.from("tracks").insert({
+          title: trackTitleFromFileName(file.name),
+          artist: null,
+          audio_url: uploadedAudio.url,
+          audio_storage_path: uploadedAudio.path,
+          cover_url: null,
+          cover_storage_path: null,
+          sort_order: startOrder + index,
+          enabled
+        });
+        if (error) throw error;
+        saved += 1;
+      } catch (error) {
+        if (uploadedAudio) await removeStoredFile("music", uploadedAudio.path);
+        failures.push(`${file.name}：${error.message || "上传失败"}`);
+      }
+    }
+    setBusy(els.bulkTrackForm, false);
+    els.bulkTrackForm.reset();
+    if (saved) await refreshAll();
+    if (failures.length) {
+      els.bulkTrackStatus.textContent = `${saved} 首成功，${failures.length} 首失败。${failures.slice(0, 2).join("；")}`;
+      toast(`${saved} 首已导入，${failures.length} 首没有成功。`, "error");
+    } else {
+      els.bulkTrackStatus.textContent = `${saved} 首歌曲已经全部导入，可以在右侧继续编辑歌名、歌手和封面。`;
+      toast(`${saved} 首歌曲已经导入。`, "success");
+    }
+  });
 }
 
 function setupTrackForm() {
@@ -1043,62 +1311,14 @@ async function refreshAll() {
   await Promise.all([loadPublicData(), loadAdminData()]);
 }
 
-function setupNeteaseForm() {
-  els.neteaseForm.addEventListener("submit", async event => {
-    event.preventDefault();
-    if (!state.isAdmin) return;
-    const raw = String(new FormData(els.neteaseForm).get("playlist") || "").trim();
-    const playlistId = parseNeteasePlaylist(raw);
-    if (raw && !playlistId) return toast("没有识别出歌单 ID，请粘贴歌单分享链接或输入纯数字 ID。", "error");
-    setBusy(els.neteaseForm, true);
-    try {
-      const lookup = await supabase
-        .from("tracks")
-        .select("id")
-        .eq("artist", NETEASE_SETTING_ARTIST)
-        .order("created_at", { ascending: true });
-      if (lookup.error) throw lookup.error;
-      const [primary, ...duplicates] = lookup.data ?? [];
-      const payload = {
-        title: "网易云歌单设置",
-        artist: NETEASE_SETTING_ARTIST,
-        audio_url: playlistId ? `https://music.163.com/playlist?id=${playlistId}` : "https://music.163.com/",
-        audio_storage_path: null,
-        cover_url: null,
-        cover_storage_path: null,
-        enabled: true,
-        sort_order: 2147483000
-      };
-      const result = primary
-        ? await supabase.from("tracks").update(payload).eq("id", primary.id)
-        : await supabase.from("tracks").insert(payload);
-      if (result.error) throw result.error;
-      if (duplicates.length) {
-        const duplicateIds = duplicates.map(item => item.id);
-        const cleanup = await supabase.from("tracks").delete().in("id", duplicateIds);
-        if (cleanup.error) console.warn("Could not remove duplicate NetEase settings", cleanup.error.message);
-      }
-      state.settings.netease_playlist = playlistId;
-      els.neteaseForm.elements.playlist.value = playlistId;
-      renderNetease();
-      renderHomePreviews();
-      toast(playlistId ? "网易云歌单已经连接。" : "网易云歌单连接已经清除。", "success");
-    } catch (error) {
-      console.error(error);
-      toast("网易云歌单没有保存成功，请重新登录后再试。", "error");
-    } finally {
-      setBusy(els.neteaseForm, false);
-    }
-  });
-}
-
 function setupAdminForms() {
   setupNoteForm();
   setupPhotoForm();
   setupTrackForm();
-  setupNeteaseForm();
+  setupBackgroundTrackForm();
+  setupBulkTrackForm();
   els.refreshComments.addEventListener("click", loadAdminData);
-  [els.photoForm, els.trackForm].forEach(form => form.addEventListener("reset", () => {
+  [els.photoForm, els.trackForm, els.backgroundTrackForm].forEach(form => form.addEventListener("reset", () => {
     window.setTimeout(() => $$('input[type="hidden"]', form).forEach(input => { input.value = ""; }), 0);
   }));
 }
@@ -1107,6 +1327,7 @@ async function init() {
   setupNavigation();
   setupDialogs();
   setupPlayer();
+  setupBackgroundPlayer();
   setupPublicForms();
   setupAuth();
   setupAdminTabs();
