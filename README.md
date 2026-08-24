@@ -28,9 +28,9 @@ python -m http.server 4173
 
 小站歌单和背景音乐复用现有 `tracks` 表与 `music` Storage bucket，不需要执行额外数据库迁移。站主可以在管理桌分别上传普通歌单和背景音乐，也可以一次多选一组本地音频批量导入；访客只能播放，不能修改。
 
-当数据库歌单为空时，网站从 `js/library.js` 读取内置曲库。每首歌由 `assets/music/audio/` 中的原始 MP3、`assets/music/covers/` 中从 MP3 提取的 800×800 WebP 封面，以及 `assets/music/lyrics/` 中的 UTF-8 LRC 歌词组成。播放器按 LRC 时间轴把前后多句铺成可点击跳转的横向歌词轨道，当前句按本句时长显示连续光扫进度，并提供参考汽车风挡式天际屏观感重新设计的沉浸全屏模式；这不是没有逐字时间戳时的伪逐字同步。切歌时首页卡片、播放器封面和歌词动态背景会同步更新。
+当数据库歌单为空时，网站从 `js/library.js` 读取内置曲库。每首歌由 `assets/music/audio/` 中的原始 MP3、`assets/music/covers/` 中从 MP3 提取的 800×800 WebP 封面，以及 `assets/music/lyrics/` 中的 UTF-8 LRC 歌词组成。播放器按 LRC 时间轴把前后歌词拆成词组，铺成三层可点击的景深轨道：靠近边缘的词组放大、虚化并被裁切，靠近中心的词组缩小、变清晰，整条轨道在每句时长内持续横向漂移；当前句与上一句通过上下景深交接，并按本句时长显示连续光扫进度。沉浸全屏模式参考汽车风挡式天际屏的空间观感重新设计；这不是没有逐字时间戳时的伪逐字同步。切歌时首页卡片、播放器封面和歌词动态背景会同步更新。
 
-歌词界面使用按本站曲库字符子集化的 Noto Sans CJK SC 可变字体，本地加载以避免依赖外部字体服务；字体遵循 SIL Open Font License 1.1，许可证见 `assets/fonts/OFL.txt`。
+歌词界面的控件文字使用按本站字符子集化的 Noto Sans CJK SC，歌词正文使用更细长的 Noto Serif CJK SC；两款可变字体均由本站本地加载，避免依赖外部字体服务。字体遵循 SIL Open Font License 1.1，许可证见 `assets/fonts/OFL.txt`。
 
 [`scripts/build_music_library.ps1`](./scripts/build_music_library.ps1) 可以从本地 MP3 与同名 LRC 重新生成 80 首曲库、封面和 `js/library.js`。脚本复制音频而不转码，并用 SHA-256 核验复制结果；不要把无公开使用授权的音频或歌词加入曲库。
 
