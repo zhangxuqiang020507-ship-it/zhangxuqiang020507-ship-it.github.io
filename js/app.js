@@ -1,6 +1,7 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/+esm";
 
 const config = window.SITE_CONFIG ?? {};
+const builtInLibrary = Array.isArray(window.MUSIC_LIBRARY) ? window.MUSIC_LIBRARY : [];
 const BACKGROUND_TRACK_PREFIX = "__SITE_BACKGROUND__:";
 const SITE_SETTING_PREFIX = "__SITE_";
 const isConfigured = Boolean(
@@ -32,6 +33,9 @@ const state = {
   backgroundSignature: "",
   backgroundAutoplayAttempted: false,
   resumeBackgroundAfterTrack: false,
+  lyrics: [],
+  activeLyric: -1,
+  lyricLoadToken: 0,
   activePhoto: null
 };
 
@@ -74,6 +78,14 @@ const els = {
   playPause: $("#playPause"),
   prevTrack: $("#prevTrack"),
   nextTrack: $("#nextTrack"),
+  libraryCount: $("#libraryCount"),
+  skylineLyrics: $("#skylineLyrics"),
+  lyricsBackdrop: $("#lyricsBackdrop"),
+  lyricsTrackName: $("#lyricsTrackName"),
+  lyricPrevious: $("#lyricPrevious"),
+  lyricCurrent: $("#lyricCurrent"),
+  lyricNext: $("#lyricNext"),
+  lyricsExpand: $("#lyricsExpand"),
   backgroundAudio: $("#backgroundAudio"),
   noteForm: $("#noteForm"),
   photoForm: $("#photoForm"),
@@ -99,6 +111,8 @@ Object.assign(els, {
   homePhotoCount: $("#homePhotoCount"),
   homePhotoPreview: $("#homePhotoPreview"),
   homeTrackPreview: $("#homeTrackPreview"),
+  homeTrackCover: $("#homeTrackCover"),
+  homeTrackCoverFallback: $(".mini-cover span"),
   photoFileLabel: $("#photoFileLabel"),
   photoUploadHint: $("#photoUploadHint"),
   photoUploadPreview: $("#photoUploadPreview")
@@ -311,6 +325,25 @@ function partitionTracks(rows) {
   return { tracks, backgroundTracks };
 }
 
+function configuredTracks() {
+  return builtInLibrary
+    .filter(track => track?.audioUrl)
+    .map((track, index) => ({
+      id: String(track.id || `library-${index + 1}`),
+      title: String(track.title || `歌曲 ${index + 1}`),
+      artist: String(track.artist || "") || null,
+      album: String(track.album || "") || null,
+      duration: Number(track.duration || 0),
+      audio_url: String(track.audioUrl),
+      cover_url: String(track.coverUrl || "") || null,
+      lyrics_url: String(track.lyricsUrl || "") || null,
+      timed_lyrics: track.timedLyrics !== false,
+      enabled: true,
+      sort_order: Number(track.sortOrder ?? index),
+      built_in: true
+    }));
+}
+
 function configuredBackgroundTracks() {
   const configured = Array.isArray(config.defaultBackgroundTracks)
     ? config.defaultBackgroundTracks
@@ -330,6 +363,17 @@ function configuredBackgroundTracks() {
     }));
 }
 
+function setHomeTrackPreview(track) {
+  els.homeTrackPreview.textContent = track?.title || "我的小站歌单与背景音乐";
+  const coverUrl = track?.cover_url || "";
+  els.homeTrackCover.hidden = !coverUrl;
+  els.homeTrackCoverFallback.hidden = Boolean(coverUrl);
+  if (coverUrl && els.homeTrackCover.src !== new URL(coverUrl, location.href).href) {
+    els.homeTrackCover.src = coverUrl;
+    els.homeTrackCover.alt = `${track.title}封面`;
+  }
+}
+
 function renderHomePreviews() {
   const note = state.notes[0];
   els.homeNotePreview.textContent = note?.body || "今天也捡到了一点好看的光";
@@ -341,7 +385,7 @@ function renderHomePreviews() {
     frame.style.backgroundImage = photo ? `url("${String(photo.image_url).replace(/["\\]/g, "")}")` : "";
     frame.classList.toggle("has-photo", Boolean(photo));
   });
-  els.homeTrackPreview.textContent = state.tracks[0]?.title || state.backgroundTracks[0]?.title || "我的小站歌单与背景音乐";
+  setHomeTrackPreview(state.tracks[0] || state.backgroundTracks[0]);
 }
 
 function openPhoto(photo) {
@@ -380,14 +424,130 @@ async function openComments(targetType, targetId, title) {
   ])));
 }
 
+function parseLrc(text) {
+  const timestampPattern = /\[(\d{1,3}):(\d{2})(?:[\.:](\d{1,3}))?\]/g;
+  const offsetMatch = text.match(/^\[offset:([+-]?\d+)\]/im);
+  const offsetSeconds = offsetMatch ? Number(offsetMatch[1]) / 1000 : 0;
+  const parsed = [];
+
+  for (const line of text.replace(/^\uFEFF/, "").split(/\r?\n/)) {
+    const timestamps = [...line.matchAll(timestampPattern)];
+    if (!timestamps.length) continue;
+    const lyric = line.replace(timestampPattern, "").replace(/\[[^\]]+\]/g, "").trim();
+    if (!lyric) continue;
+    for (const match of timestamps) {
+      const fraction = String(match[3] || "0").padEnd(3, "0").slice(0, 3);
+      const time = (Number(match[1]) * 60) + Number(match[2]) + (Number(fraction) / 1000) + offsetSeconds;
+      parsed.push({ time: Math.max(0, time), text: lyric });
+    }
+  }
+
+  parsed.sort((a, b) => a.time - b.time);
+  const merged = [];
+  for (const line of parsed) {
+    const previous = merged.at(-1);
+    if (previous && Math.abs(previous.time - line.time) < 0.01) {
+      if (!previous.text.split("\n").includes(line.text)) previous.text += `\n${line.text}`;
+    } else {
+      merged.push({ ...line });
+    }
+  }
+  return merged;
+}
+
+function setLyricMessage(message) {
+  state.lyrics = [];
+  state.activeLyric = -1;
+  els.lyricPrevious.textContent = "";
+  els.lyricCurrent.textContent = message;
+  els.lyricNext.textContent = "";
+}
+
+function renderLyric(index) {
+  if (!state.lyrics.length) return;
+  const visibleIndex = index < 0 ? 0 : index;
+  els.lyricPrevious.textContent = visibleIndex > 0 ? state.lyrics[visibleIndex - 1].text : "";
+  els.lyricCurrent.textContent = state.lyrics[visibleIndex]?.text || "";
+  els.lyricNext.textContent = state.lyrics[visibleIndex + 1]?.text || "";
+}
+
+function updateLyric(currentTime) {
+  if (!state.lyrics.length) return;
+  let low = 0;
+  let high = state.lyrics.length - 1;
+  let active = -1;
+  while (low <= high) {
+    const middle = Math.floor((low + high) / 2);
+    if (state.lyrics[middle].time <= currentTime + 0.04) {
+      active = middle;
+      low = middle + 1;
+    } else {
+      high = middle - 1;
+    }
+  }
+  if (active !== state.activeLyric) {
+    state.activeLyric = active;
+    renderLyric(active);
+  }
+}
+
+async function loadLyrics(track) {
+  const token = state.lyricLoadToken + 1;
+  state.lyricLoadToken = token;
+  els.lyricsTrackName.textContent = [track.title, track.artist].filter(Boolean).join(" · ");
+  if (track.cover_url) els.lyricsBackdrop.src = track.cover_url;
+  setLyricMessage("正在读取同步歌词…");
+  if (!track.lyrics_url) {
+    setLyricMessage("这首歌暂时没有同步歌词");
+    return;
+  }
+
+  try {
+    const response = await fetch(track.lyrics_url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const lyrics = parseLrc(await response.text());
+    if (token !== state.lyricLoadToken) return;
+    if (!lyrics.length) {
+      setLyricMessage("这首歌暂无可显示的同步歌词");
+      return;
+    }
+    state.lyrics = lyrics;
+    state.activeLyric = -2;
+    updateLyric(els.audio.currentTime || 0);
+  } catch (error) {
+    if (token !== state.lyricLoadToken) return;
+    console.warn("歌词加载失败", error);
+    setLyricMessage("歌词暂时没有加载出来");
+  }
+}
+
+function setupLyrics() {
+  els.lyricsExpand.addEventListener("click", async () => {
+    try {
+      if (document.fullscreenElement === els.skylineLyrics) await document.exitFullscreen();
+      else await els.skylineLyrics.requestFullscreen();
+    } catch {
+      toast("当前浏览器暂时不支持全屏歌词。", "error");
+    }
+  });
+  document.addEventListener("fullscreenchange", () => {
+    const expanded = document.fullscreenElement === els.skylineLyrics;
+    els.lyricsExpand.setAttribute("aria-label", expanded ? "退出全屏天际歌词" : "打开全屏天际歌词");
+    const label = $("span", els.lyricsExpand);
+    if (label) label.textContent = expanded ? "退出全屏" : "天际歌词";
+  });
+}
+
 function renderPlaylist() {
   els.playlist.replaceChildren();
+  els.libraryCount.textContent = String(state.tracks.length);
   if (!state.tracks.length) {
     els.trackTitle.textContent = "歌单还是空的";
     els.trackArtist.textContent = "等站主放进第一首歌";
     els.playPause.disabled = true;
     els.prevTrack.disabled = true;
     els.nextTrack.disabled = true;
+    setLyricMessage("歌单还没有歌曲");
     return;
   }
   els.playPause.disabled = false;
@@ -410,12 +570,30 @@ function loadTrack(index, autoplay = false) {
   state.currentTrack = (index + state.tracks.length) % state.tracks.length;
   const track = state.tracks[state.currentTrack];
   els.audio.src = track.audio_url;
+  els.currentTime.textContent = "0:00";
+  els.duration.textContent = track.duration ? formatClock(track.duration) : "0:00";
+  els.progress.value = "0";
+  els.progress.style.setProperty("--progress", "0%");
   els.trackTitle.textContent = track.title;
   els.trackArtist.textContent = track.artist || "未填写歌手";
   els.albumCover.replaceChildren();
   if (track.cover_url) els.albumCover.append(make("img", { attrs: { src: track.cover_url, alt: `${track.title}封面` } }));
   else els.albumCover.append(make("span", { text: "♫" }));
-  $$("li", els.playlist).forEach((row, rowIndex) => row.classList.toggle("active", rowIndex === state.currentTrack));
+  setHomeTrackPreview(track);
+  $$("li", els.playlist).forEach((row, rowIndex) => {
+    const active = rowIndex === state.currentTrack;
+    row.classList.toggle("active", active);
+    if (active && autoplay) row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  });
+  void loadLyrics(track);
+  if ("mediaSession" in navigator && "MediaMetadata" in window) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: track.title,
+      artist: track.artist || "张旭强的小站",
+      album: track.album || "小站歌单",
+      artwork: track.cover_url ? [{ src: new URL(track.cover_url, location.href).href, sizes: "800x800", type: "image/webp" }] : []
+    });
+  }
   setPlayIcon(false);
   if (autoplay) els.audio.play().catch(() => toast("浏览器没有允许自动播放，请再点一次播放。"));
 }
@@ -535,6 +713,7 @@ function setupPlayer() {
   els.nextTrack.addEventListener("click", () => loadTrack(state.currentTrack + 1, true));
   els.audio.addEventListener("play", () => {
     setPlayIcon(true);
+    els.skylineLyrics.classList.add("is-playing");
     if (state.backgroundTracks.length) {
       state.resumeBackgroundAfterTrack = true;
       if (!els.backgroundAudio.paused) els.backgroundAudio.pause();
@@ -542,6 +721,7 @@ function setupPlayer() {
   });
   els.audio.addEventListener("pause", () => {
     setPlayIcon(false);
+    els.skylineLyrics.classList.remove("is-playing");
     window.setTimeout(() => {
       if (els.audio.paused && state.resumeBackgroundAfterTrack) {
         state.resumeBackgroundAfterTrack = false;
@@ -556,9 +736,13 @@ function setupPlayer() {
     els.progress.value = String(percent);
     els.progress.style.setProperty("--progress", `${percent}%`);
     els.currentTime.textContent = formatClock(els.audio.currentTime);
+    updateLyric(els.audio.currentTime);
   });
   els.progress.addEventListener("input", () => {
-    if (els.audio.duration) els.audio.currentTime = (Number(els.progress.value) / 100) * els.audio.duration;
+    if (els.audio.duration) {
+      els.audio.currentTime = (Number(els.progress.value) / 100) * els.audio.duration;
+      updateLyric(els.audio.currentTime);
+    }
   });
 }
 
@@ -566,7 +750,7 @@ async function loadPublicData() {
   if (!isConfigured) {
     state.notes = previewData.notes;
     state.photos = previewData.photos;
-    state.tracks = [];
+    state.tracks = configuredTracks();
     state.backgroundTracks = configuredBackgroundTracks();
     state.publicComments = [];
     renderPublic();
@@ -583,7 +767,7 @@ async function loadPublicData() {
   state.notes = notesResult.data ?? [];
   state.photos = photosResult.data ?? [];
   const partitionedTracks = partitionTracks(tracksResult.data ?? []);
-  state.tracks = partitionedTracks.tracks;
+  state.tracks = partitionedTracks.tracks.length ? partitionedTracks.tracks : configuredTracks();
   state.backgroundTracks = partitionedTracks.backgroundTracks.length
     ? partitionedTracks.backgroundTracks
     : configuredBackgroundTracks();
@@ -1327,6 +1511,7 @@ async function init() {
   setupNavigation();
   setupDialogs();
   setupPlayer();
+  setupLyrics();
   setupBackgroundPlayer();
   setupPublicForms();
   setupAuth();
