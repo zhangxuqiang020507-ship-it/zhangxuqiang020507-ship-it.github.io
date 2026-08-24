@@ -81,10 +81,14 @@ const els = {
   libraryCount: $("#libraryCount"),
   skylineLyrics: $("#skylineLyrics"),
   lyricsBackdrop: $("#lyricsBackdrop"),
+  lyricsCover: $("#lyricsCover"),
   lyricsTrackName: $("#lyricsTrackName"),
-  lyricPrevious: $("#lyricPrevious"),
+  lyricsClock: $("#lyricsClock"),
+  lyricsPosition: $("#lyricsPosition"),
+  lyricsRibbon: $("#lyricsRibbon"),
+  lyricsLines: $("#lyricsLines"),
   lyricCurrent: $("#lyricCurrent"),
-  lyricNext: $("#lyricNext"),
+  lyricLineProgress: $("#lyricLineProgress"),
   lyricsExpand: $("#lyricsExpand"),
   backgroundAudio: $("#backgroundAudio"),
   noteForm: $("#noteForm"),
@@ -458,17 +462,70 @@ function parseLrc(text) {
 function setLyricMessage(message) {
   state.lyrics = [];
   state.activeLyric = -1;
-  els.lyricPrevious.textContent = "";
+  els.lyricsRibbon.replaceChildren();
   els.lyricCurrent.textContent = message;
-  els.lyricNext.textContent = "";
+  els.lyricCurrent.style.setProperty("--lyric-progress", "0%");
+  els.lyricLineProgress.style.width = "0%";
+  els.lyricsClock.textContent = formatClock(els.audio.currentTime || 0);
+  els.lyricsPosition.textContent = "0 / 0";
 }
 
 function renderLyric(index) {
   if (!state.lyrics.length) return;
   const visibleIndex = index < 0 ? 0 : index;
-  els.lyricPrevious.textContent = visibleIndex > 0 ? state.lyrics[visibleIndex - 1].text : "";
   els.lyricCurrent.textContent = state.lyrics[visibleIndex]?.text || "";
-  els.lyricNext.textContent = state.lyrics[visibleIndex + 1]?.text || "";
+  els.lyricsPosition.textContent = `${visibleIndex + 1} / ${state.lyrics.length}`;
+
+  const orbit = [];
+  const xByDistance = [0, 30, 44, 56];
+  const opacityByDistance = [1, 0.7, 0.43, 0.24];
+  const scaleByDistance = [1, 1, 0.84, 0.7];
+  for (const offset of [-3, -2, -1, 1, 2, 3]) {
+    const lyricIndex = visibleIndex + offset;
+    const line = state.lyrics[lyricIndex];
+    if (!line) continue;
+    const distance = Math.abs(offset);
+    const side = offset < 0 ? "past" : "future";
+    const node = make("button", {
+      className: `lyric-orbit-line is-${side}`,
+      type: "button",
+      title: `${formatClock(line.time)} · ${line.text}`,
+      dataset: { lyricIndex: String(lyricIndex), distance: String(distance) },
+      attrs: { "aria-label": `跳转到 ${formatClock(line.time)}，${line.text}` }
+    }, [
+      make("span", { text: line.text }),
+      make("small", { text: formatClock(line.time) })
+    ]);
+    node.style.setProperty("--lyric-x", `${(offset < 0 ? -1 : 1) * xByDistance[distance]}%`);
+    node.style.setProperty("--lyric-opacity", String(opacityByDistance[distance]));
+    node.style.setProperty("--lyric-scale", String(scaleByDistance[distance]));
+    node.style.setProperty("--lyric-blur", `${Math.max(0, distance - 1) * 1.3}px`);
+    orbit.push(node);
+  }
+  els.lyricsRibbon.replaceChildren(...orbit);
+
+  if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    els.lyricsLines.animate([
+      { opacity: 0.58, transform: "translate3d(0,5px,0) scale(.995)" },
+      { opacity: 1, transform: "translate3d(0,0,0) scale(1)" }
+    ], { duration: 480, easing: "cubic-bezier(.2,.8,.2,1)" });
+  }
+}
+
+function updateLyricProgress(currentTime, activeIndex = state.activeLyric) {
+  els.lyricsClock.textContent = formatClock(currentTime || 0);
+  if (!state.lyrics.length || activeIndex < 0) {
+    els.lyricCurrent.style.setProperty("--lyric-progress", "0%");
+    els.lyricLineProgress.style.width = "0%";
+    return;
+  }
+  const start = state.lyrics[activeIndex]?.time ?? currentTime;
+  const fallbackEnd = Number.isFinite(els.audio.duration) ? els.audio.duration : start + 6;
+  const end = state.lyrics[activeIndex + 1]?.time ?? fallbackEnd;
+  const progress = Math.max(0, Math.min(1, (currentTime - start) / Math.max(0.35, end - start)));
+  const progressPercent = `${(progress * 100).toFixed(2)}%`;
+  els.lyricCurrent.style.setProperty("--lyric-progress", progressPercent);
+  els.lyricLineProgress.style.width = progressPercent;
 }
 
 function updateLyric(currentTime) {
@@ -489,13 +546,17 @@ function updateLyric(currentTime) {
     state.activeLyric = active;
     renderLyric(active);
   }
+  updateLyricProgress(currentTime, active);
 }
 
 async function loadLyrics(track) {
   const token = state.lyricLoadToken + 1;
   state.lyricLoadToken = token;
   els.lyricsTrackName.textContent = [track.title, track.artist].filter(Boolean).join(" · ");
-  if (track.cover_url) els.lyricsBackdrop.src = track.cover_url;
+  if (track.cover_url) {
+    els.lyricsBackdrop.src = track.cover_url;
+    els.lyricsCover.src = track.cover_url;
+  }
   setLyricMessage("正在读取同步歌词…");
   if (!track.lyrics_url) {
     setLyricMessage("这首歌暂时没有同步歌词");
@@ -522,6 +583,15 @@ async function loadLyrics(track) {
 }
 
 function setupLyrics() {
+  els.lyricsRibbon.addEventListener("click", event => {
+    const target = event.target.closest("[data-lyric-index]");
+    if (!target) return;
+    const lyricIndex = Number(target.dataset.lyricIndex);
+    const line = state.lyrics[lyricIndex];
+    if (!line) return;
+    els.audio.currentTime = line.time;
+    updateLyric(line.time);
+  });
   els.lyricsExpand.addEventListener("click", async () => {
     try {
       if (document.fullscreenElement === els.skylineLyrics) await document.exitFullscreen();
@@ -534,7 +604,7 @@ function setupLyrics() {
     const expanded = document.fullscreenElement === els.skylineLyrics;
     els.lyricsExpand.setAttribute("aria-label", expanded ? "退出全屏天际歌词" : "打开全屏天际歌词");
     const label = $("span", els.lyricsExpand);
-    if (label) label.textContent = expanded ? "退出全屏" : "天际歌词";
+    if (label) label.textContent = expanded ? "退出沉浸" : "沉浸歌词";
   });
 }
 
