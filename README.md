@@ -5,7 +5,7 @@
 - 碎碎念
 - 摄影作品与照片评论
 - 访客留言板
-- 小站自有歌单与无界面随机背景音乐
+- 80 首小站歌单、随歌曲变化的封面、同步歌词与无界面随机背景音乐
 - 仅站主可用的登录和管理桌
 - Supabase Auth、Postgres RLS 与 Storage 权限
 - JPG/PNG/WebP/AVIF/HEIC 照片上传与大图自动压缩
@@ -27,6 +27,10 @@ python -m http.server 4173
 按 [`supabase/SETUP.md`](./supabase/SETUP.md) 完成免费 Supabase 项目、唯一站主账号、Storage bucket 和前端发布密钥配置。
 
 小站歌单和背景音乐复用现有 `tracks` 表与 `music` Storage bucket，不需要执行额外数据库迁移。站主可以在管理桌分别上传普通歌单和背景音乐，也可以一次多选一组本地音频批量导入；访客只能播放，不能修改。
+
+当数据库歌单为空时，网站从 `js/library.js` 读取内置曲库。每首歌由 `assets/music/audio/` 中的原始 MP3、`assets/music/covers/` 中从 MP3 提取的 800×800 WebP 封面，以及 `assets/music/lyrics/` 中的 UTF-8 LRC 歌词组成。播放器按 LRC 时间轴切换上一句、当前句和下一句，并提供参考小米 YU7 天际屏宽幅排版的全屏歌词模式。切歌时首页卡片、播放器封面和歌词动态背景会同步更新。
+
+[`scripts/build_music_library.ps1`](./scripts/build_music_library.ps1) 可以从本地 MP3 与同名 LRC 重新生成 80 首曲库、封面和 `js/library.js`。脚本复制音频而不转码，并用 SHA-256 核验复制结果；不要把无公开使用授权的音频或歌词加入曲库。
 
 背景音乐没有可见控制组件，会在页面加载后立即尝试播放；有声自动播放被浏览器拦截时，会在访客第一次点击或使用键盘操作页面时重试。多首已启用背景音乐按随机顺序连续播放，每轮结束后重新洗牌，并避免相邻重复。背景音量由 `js/config.js` 中的 `backgroundVolume` 控制。只应上传自己拥有或获准公开使用的音频文件。
 
