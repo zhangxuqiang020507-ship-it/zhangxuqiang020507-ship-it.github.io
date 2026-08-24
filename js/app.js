@@ -35,6 +35,7 @@ const state = {
   resumeBackgroundAfterTrack: false,
   lyrics: [],
   activeLyric: -1,
+  lyricStreamAnimation: null,
   lyricLoadToken: 0,
   activePhoto: null
 };
@@ -88,6 +89,7 @@ const els = {
   lyricsRibbon: $("#lyricsRibbon"),
   lyricsLines: $("#lyricsLines"),
   lyricCurrent: $("#lyricCurrent"),
+  lyricCompanion: $("#lyricCompanion"),
   lyricLineProgress: $("#lyricLineProgress"),
   lyricsExpand: $("#lyricsExpand"),
   backgroundAudio: $("#backgroundAudio"),
@@ -459,66 +461,133 @@ function parseLrc(text) {
   return merged;
 }
 
+function splitLyricFragments(text) {
+  const normalized = String(text || "").replace(/\s*\n\s*/g, " ").trim();
+  if (!normalized) return [];
+
+  let words = [];
+  try {
+    words = [...new Intl.Segmenter("zh-CN", { granularity: "word" }).segment(normalized)]
+      .filter(segment => segment.isWordLike)
+      .map(segment => segment.segment.trim())
+      .filter(Boolean);
+  } catch {
+    words = normalized.split(/\s+/).filter(Boolean);
+  }
+
+  if (words.length < 2 && Array.from(normalized).length > 4) {
+    const characters = Array.from(normalized.replace(/\s+/g, ""));
+    words = [];
+    for (let index = 0; index < characters.length; index += 2) words.push(characters.slice(index, index + 2).join(""));
+  }
+  if (words.length <= 5) return words.length ? words : [normalized];
+
+  const groups = [];
+  const groupSize = Math.ceil(words.length / 5);
+  for (let index = 0; index < words.length; index += groupSize) groups.push(words.slice(index, index + groupSize).join(""));
+  return groups.slice(0, 5);
+}
+
 function setLyricMessage(message) {
   state.lyrics = [];
   state.activeLyric = -1;
+  state.lyricStreamAnimation?.cancel();
+  state.lyricStreamAnimation = null;
   els.lyricsRibbon.replaceChildren();
   els.lyricCurrent.textContent = message;
+  els.lyricCompanion.textContent = "";
   els.lyricCurrent.style.setProperty("--lyric-progress", "0%");
   els.lyricLineProgress.style.width = "0%";
   els.lyricsClock.textContent = formatClock(els.audio.currentTime || 0);
   els.lyricsPosition.textContent = "0 / 0";
 }
 
-function renderLyric(index, direction = 1) {
+function renderLyric(index, direction = 1, previousIndex = -1) {
   if (!state.lyrics.length) return;
   const visibleIndex = index < 0 ? 0 : index;
-  els.lyricCurrent.textContent = state.lyrics[visibleIndex]?.text || "";
+  const currentLine = state.lyrics[visibleIndex];
+  const outgoingLine = previousIndex >= 0 ? state.lyrics[previousIndex] : null;
+  els.lyricCurrent.textContent = currentLine?.text || "";
+  els.lyricCompanion.textContent = outgoingLine?.text || state.lyrics[visibleIndex + 1]?.text || "";
   els.lyricCurrent.style.setProperty("--lyric-progress", "0%");
   els.lyricsPosition.textContent = `${visibleIndex + 1} / ${state.lyrics.length}`;
   els.skylineLyrics.dataset.lyricDirection = direction < 0 ? "backward" : "forward";
 
   const orbit = [];
-  const xByDistance = [0, 30, 44, 56];
-  const opacityByDistance = [1, 0.7, 0.43, 0.24];
-  const scaleByDistance = [1, 1, 0.84, 0.7];
+  const xByDistance = [0, 24, 41, 59];
+  const yByDistance = [50, 49.5, 51, 53];
+  const widthByDistance = [0, 30, 40, 54];
+  const opacityByDistance = [1, 0.78, 0.57, 0.33];
+  const scaleByDistance = [1, 0.86, 1.03, 1.24];
+  const blurByDistance = [0, 0, 1.6, 4.8];
+  const tiltByDistance = [0, 6, 14, 22];
+  const baseFontByDistance = [0, 0.72, 1.05, 1.48];
+  const fragmentScale = [0.72, 1.3, 0.86, 1.5, 0.68];
+  const fragmentOpacity = [0.46, 1, 0.68, 0.84, 0.4];
+  const fragmentShift = [5, -6, 2, -4, 7];
   for (const offset of [-3, -2, -1, 1, 2, 3]) {
     const lyricIndex = visibleIndex + offset;
     const line = state.lyrics[lyricIndex];
     if (!line) continue;
     const distance = Math.abs(offset);
     const side = offset < 0 ? "past" : "future";
+    const fragments = splitLyricFragments(line.text).map((fragment, fragmentIndex) => {
+      const scale = fragmentScale[fragmentIndex % fragmentScale.length];
+      const fragmentNode = make("span", { className: "lyric-fragment", text: fragment });
+      fragmentNode.style.setProperty("--fragment-size", `${(baseFontByDistance[distance] * scale).toFixed(3)}rem`);
+      fragmentNode.style.setProperty("--fragment-full-size", `${(baseFontByDistance[distance] * scale * 1.55).toFixed(3)}rem`);
+      fragmentNode.style.setProperty("--fragment-opacity", String(fragmentOpacity[fragmentIndex % fragmentOpacity.length]));
+      fragmentNode.style.setProperty("--fragment-shift", `${fragmentShift[fragmentIndex % fragmentShift.length]}px`);
+      return fragmentNode;
+    });
     const node = make("button", {
       className: `lyric-orbit-line is-${side}`,
       type: "button",
       title: `${formatClock(line.time)} · ${line.text}`,
       dataset: { lyricIndex: String(lyricIndex), distance: String(distance) },
       attrs: { "aria-label": `跳转到 ${formatClock(line.time)}，${line.text}` }
-    }, [
-      make("span", { text: line.text }),
-      make("small", { text: formatClock(line.time) })
-    ]);
+    }, fragments);
     node.style.setProperty("--lyric-x", `${(offset < 0 ? -1 : 1) * xByDistance[distance]}%`);
+    node.style.setProperty("--lyric-y", `${yByDistance[distance]}%`);
+    node.style.setProperty("--lyric-width", `${widthByDistance[distance]}vw`);
     node.style.setProperty("--lyric-opacity", String(opacityByDistance[distance]));
     node.style.setProperty("--lyric-scale", String(scaleByDistance[distance]));
-    node.style.setProperty("--lyric-blur", `${Math.max(0, distance - 1) * 1.3}px`);
+    node.style.setProperty("--lyric-blur", `${blurByDistance[distance]}px`);
+    node.style.setProperty("--lyric-tilt", `${(offset < 0 ? 1 : -1) * tiltByDistance[distance]}deg`);
+    node.style.setProperty("--lyric-roll", `${(offset < 0 ? -1 : 1) * Math.max(0, distance - 1) * 0.6}deg`);
     orbit.push(node);
   }
   els.lyricsRibbon.replaceChildren(...orbit);
+  state.lyricStreamAnimation?.cancel();
+  state.lyricStreamAnimation = null;
 
   if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     els.lyricsRibbon.getAnimations().forEach(animation => animation.cancel());
     els.lyricCurrent.getAnimations().forEach(animation => animation.cancel());
+    els.lyricCompanion.getAnimations().forEach(animation => animation.cancel());
     const travel = direction < 0 ? -1 : 1;
-    els.lyricsRibbon.animate([
-      { opacity: 0.35, transform: `translate3d(${travel * 42}px,0,0) rotateY(${travel * -3}deg)` },
-      { opacity: 1, transform: "translate3d(0,0,0) rotateY(0deg)" }
-    ], { duration: 680, easing: "cubic-bezier(.16,1,.3,1)" });
+    const lineEnd = state.lyrics[visibleIndex + 1]?.time ?? ((currentLine?.time || 0) + 5);
+    const streamDuration = Math.max(1800, Math.min(9000, (lineEnd - (currentLine?.time || 0)) * 1000));
+    const streamAnimation = els.lyricsRibbon.animate([
+      { opacity: 0.2, transform: `translate3d(${travel * 34}px,0,0) rotateY(${travel * -1.6}deg)` },
+      { offset: 0.24, opacity: 1, transform: `translate3d(${travel * 8}px,0,0) rotateY(${travel * -.35}deg)` },
+      { opacity: 1, transform: `translate3d(${travel * -26}px,0,0) rotateY(${travel * .8}deg)` }
+    ], { duration: streamDuration, easing: "linear", fill: "both" });
+    const streamPosition = Math.max(0, Math.min(streamDuration, ((els.audio.currentTime || 0) - (currentLine?.time || 0)) * 1000));
+    streamAnimation.currentTime = streamPosition;
+    if (els.audio.paused) streamAnimation.pause();
+    state.lyricStreamAnimation = streamAnimation;
     els.lyricCurrent.animate([
-      { opacity: 0.08, filter: "blur(6px) drop-shadow(0 5px 12px rgba(0,0,0,.26))", transform: `translate(-50%,calc(-50% + ${travel * 14}px)) translateZ(12px) scale(.955)` },
-      { offset: 0.72, opacity: 1, filter: "blur(0) drop-shadow(0 6px 16px rgba(0,0,0,.42))", transform: `translate(-50%,calc(-50% - ${travel * 2}px)) translateZ(40px) scale(1.012)` },
-      { opacity: 1, filter: "blur(0) drop-shadow(0 5px 12px rgba(0,0,0,.38))", transform: "translate(-50%,-50%) translateZ(34px) scale(1)" }
-    ], { duration: 680, easing: "cubic-bezier(.16,1,.3,1)" });
+      { opacity: 0.06, filter: "blur(5px) drop-shadow(0 4px 10px rgba(0,0,0,.24))", transform: `translate(-50%,calc(-50% + ${travel * 34}px)) translateZ(0) scale(.7)` },
+      { offset: 0.7, opacity: 1, filter: "blur(0) drop-shadow(0 5px 13px rgba(0,0,0,.36))", transform: `translate(-50%,calc(-50% - ${travel * 2}px)) translateZ(28px) scale(1.015)` },
+      { opacity: 1, filter: "blur(0) drop-shadow(0 4px 10px rgba(0,0,0,.34))", transform: "translate(-50%,-50%) translateZ(24px) scale(1)" }
+    ], { duration: 860, easing: "cubic-bezier(.16,1,.3,1)" });
+    if (outgoingLine) {
+      els.lyricCompanion.animate([
+        { opacity: 0.86, filter: "blur(0)", transform: "translate(-50%,calc(-50% - 38px)) translateZ(22px) scale(1.72)" },
+        { opacity: 0.42, filter: "blur(.45px)", transform: "translate(-50%,-50%) translateZ(0) scale(1)" }
+      ], { duration: 900, easing: "cubic-bezier(.16,1,.3,1)" });
+    }
   }
 }
 
@@ -536,6 +605,12 @@ function updateLyricProgress(currentTime, activeIndex = state.activeLyric) {
   const progressPercent = `${(progress * 100).toFixed(2)}%`;
   els.lyricCurrent.style.setProperty("--lyric-progress", progressPercent);
   els.lyricLineProgress.style.width = progressPercent;
+  if (state.lyricStreamAnimation) {
+    const duration = Number(state.lyricStreamAnimation.effect?.getTiming().duration) || 0;
+    const streamPosition = progress * duration;
+    const animationPosition = Number(state.lyricStreamAnimation.currentTime) || 0;
+    if (Math.abs(animationPosition - streamPosition) > 140) state.lyricStreamAnimation.currentTime = streamPosition;
+  }
 }
 
 function updateLyric(currentTime) {
@@ -555,7 +630,7 @@ function updateLyric(currentTime) {
   if (active !== state.activeLyric) {
     const previousActive = state.activeLyric;
     state.activeLyric = active;
-    renderLyric(active, previousActive > active ? -1 : 1);
+    renderLyric(active, previousActive > active ? -1 : 1, previousActive);
   }
   updateLyricProgress(currentTime, active);
 }
@@ -795,6 +870,7 @@ function setupPlayer() {
   els.audio.addEventListener("play", () => {
     setPlayIcon(true);
     els.skylineLyrics.classList.add("is-playing");
+    state.lyricStreamAnimation?.play();
     if (state.backgroundTracks.length) {
       state.resumeBackgroundAfterTrack = true;
       if (!els.backgroundAudio.paused) els.backgroundAudio.pause();
@@ -803,6 +879,7 @@ function setupPlayer() {
   els.audio.addEventListener("pause", () => {
     setPlayIcon(false);
     els.skylineLyrics.classList.remove("is-playing");
+    state.lyricStreamAnimation?.pause();
     window.setTimeout(() => {
       if (els.audio.paused && state.resumeBackgroundAfterTrack) {
         state.resumeBackgroundAfterTrack = false;
