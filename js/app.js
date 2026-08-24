@@ -3,8 +3,6 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const config = window.SITE_CONFIG ?? {};
 const BACKGROUND_TRACK_PREFIX = "__SITE_BACKGROUND__:";
 const SITE_SETTING_PREFIX = "__SITE_";
-const AMBIENT_ENABLED_KEY = "zhangxuqiang_ambient_enabled";
-const AMBIENT_VOLUME_KEY = "zhangxuqiang_ambient_volume";
 const isConfigured = Boolean(
   config.supabaseUrl?.startsWith("https://") &&
   config.supabasePublishableKey &&
@@ -29,9 +27,10 @@ const state = {
   publicComments: [],
   admin: { notes: [], photos: [], tracks: [], backgroundTracks: [], comments: [] },
   currentTrack: 0,
-  backgroundTrack: 0,
+  backgroundTrack: -1,
+  backgroundQueue: [],
+  backgroundSignature: "",
   backgroundAutoplayAttempted: false,
-  backgroundUserPaused: false,
   resumeBackgroundAfterTrack: false,
   activePhoto: null
 };
@@ -75,11 +74,6 @@ const els = {
   playPause: $("#playPause"),
   prevTrack: $("#prevTrack"),
   nextTrack: $("#nextTrack"),
-  backgroundMusicControl: $("#backgroundMusicControl"),
-  backgroundMusicToggle: $("#backgroundMusicToggle"),
-  backgroundMusicIcon: $("#backgroundMusicIcon"),
-  backgroundMusicLabel: $("#backgroundMusicLabel"),
-  backgroundMusicVolume: $("#backgroundMusicVolume"),
   backgroundAudio: $("#backgroundAudio"),
   noteForm: $("#noteForm"),
   photoForm: $("#photoForm"),
@@ -318,17 +312,22 @@ function partitionTracks(rows) {
 }
 
 function configuredBackgroundTracks() {
-  const track = config.defaultBackgroundTrack;
-  if (!track?.audioUrl) return [];
-  return [{
-    id: "site-default-background",
-    title: String(track.title || "小站背景音乐"),
-    artist: String(track.artist || "") || null,
-    audio_url: String(track.audioUrl),
-    enabled: true,
-    sort_order: 0,
-    built_in: true
-  }];
+  const configured = Array.isArray(config.defaultBackgroundTracks)
+    ? config.defaultBackgroundTracks
+    : config.defaultBackgroundTrack
+      ? [config.defaultBackgroundTrack]
+      : [];
+  return configured
+    .filter(track => track?.audioUrl)
+    .map((track, index) => ({
+      id: `site-default-background-${index}`,
+      title: String(track.title || "小站背景音乐"),
+      artist: String(track.artist || "") || null,
+      audio_url: String(track.audioUrl),
+      enabled: true,
+      sort_order: index,
+      built_in: true
+    }));
 }
 
 function renderHomePreviews() {
@@ -426,27 +425,19 @@ function setPlayIcon(playing) {
   els.playPause.setAttribute("aria-label", playing ? "暂停" : "播放");
 }
 
-function readPreference(key, fallback = "") {
-  try {
-    return localStorage.getItem(key) ?? fallback;
-  } catch {
-    return fallback;
+function shuffleBackgroundOrder(indices) {
+  for (let index = indices.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [indices[index], indices[swapIndex]] = [indices[swapIndex], indices[index]];
   }
+  if (indices.length > 1 && indices[0] === state.backgroundTrack) {
+    [indices[0], indices[1]] = [indices[1], indices[0]];
+  }
+  return indices;
 }
 
-function savePreference(key, value) {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // The player still works when private browsing blocks persistent storage.
-  }
-}
-
-function setBackgroundControl(playing, message = "") {
-  const track = state.backgroundTracks[state.backgroundTrack];
-  els.backgroundMusicIcon.setAttribute("href", playing ? "#icon-pause" : "#icon-play");
-  els.backgroundMusicToggle.setAttribute("aria-label", playing ? "暂停背景音乐" : "播放背景音乐");
-  els.backgroundMusicLabel.textContent = message || track?.title || "点一下开启音乐";
+function refillBackgroundQueue() {
+  state.backgroundQueue = shuffleBackgroundOrder(state.backgroundTracks.map((_track, index) => index));
 }
 
 function loadBackgroundTrack(index, autoplay = false) {
@@ -459,82 +450,75 @@ function loadBackgroundTrack(index, autoplay = false) {
     els.backgroundAudio.dataset.trackUrl = track.audio_url;
   }
   els.backgroundAudio.loop = state.backgroundTracks.length === 1;
-  setBackgroundControl(!els.backgroundAudio.paused, track.title);
   if (autoplay) attemptBackgroundPlayback();
 }
 
-async function attemptBackgroundPlayback(fromVisitor = false) {
-  if (!state.backgroundTracks.length || state.backgroundUserPaused) return false;
-  if (fromVisitor) savePreference(AMBIENT_ENABLED_KEY, "on");
+function playNextRandomBackgroundTrack(autoplay = true) {
+  if (!state.backgroundTracks.length) return;
+  if (state.backgroundTracks.length === 1) {
+    loadBackgroundTrack(0, autoplay);
+    return;
+  }
+  if (!state.backgroundQueue.length) refillBackgroundQueue();
+  loadBackgroundTrack(state.backgroundQueue.shift(), autoplay);
+}
+
+async function attemptBackgroundPlayback() {
+  if (!state.backgroundTracks.length || !els.audio.paused) return false;
   try {
     await els.backgroundAudio.play();
-    setBackgroundControl(true);
     return true;
   } catch {
-    setBackgroundControl(false, "点一下开启音乐");
     return false;
   }
 }
 
 function renderBackgroundPlayer() {
-  const hasTracks = state.backgroundTracks.length > 0;
-  els.backgroundMusicControl.hidden = !hasTracks;
-  if (!hasTracks) {
+  if (!state.backgroundTracks.length) {
     els.backgroundAudio.pause();
     els.backgroundAudio.removeAttribute("src");
     delete els.backgroundAudio.dataset.trackId;
     delete els.backgroundAudio.dataset.trackUrl;
+    state.backgroundTrack = -1;
+    state.backgroundQueue = [];
+    state.backgroundSignature = "";
     return;
   }
-  loadBackgroundTrack(Math.min(state.backgroundTrack, state.backgroundTracks.length - 1));
-  if (!state.backgroundAutoplayAttempted && !state.backgroundUserPaused) {
+
+  const signature = state.backgroundTracks.map(track => `${track.id}:${track.audio_url}`).join("|");
+  const activeId = els.backgroundAudio.dataset.trackId;
+  const activeIndex = state.backgroundTracks.findIndex(track => String(track.id) === activeId);
+  if (signature !== state.backgroundSignature) {
+    state.backgroundSignature = signature;
+    state.backgroundQueue = [];
+    state.backgroundTrack = activeIndex;
+    state.backgroundAutoplayAttempted = false;
+  }
+  if (activeIndex < 0) playNextRandomBackgroundTrack(false);
+  else state.backgroundTrack = activeIndex;
+
+  if (!state.backgroundAutoplayAttempted) {
     state.backgroundAutoplayAttempted = true;
     attemptBackgroundPlayback();
   }
 }
 
 function setupBackgroundPlayer() {
-  const savedVolume = Number(readPreference(AMBIENT_VOLUME_KEY, "28"));
-  const volume = Number.isFinite(savedVolume) ? Math.min(100, Math.max(0, savedVolume)) : 28;
-  els.backgroundMusicVolume.value = String(volume);
-  els.backgroundAudio.volume = volume / 100;
-  state.backgroundUserPaused = readPreference(AMBIENT_ENABLED_KEY, "on") === "off";
-
-  els.backgroundMusicToggle.addEventListener("click", async () => {
-    if (!state.backgroundTracks.length) return;
-    if (els.backgroundAudio.paused) {
-      if (!els.audio.paused) {
-        state.resumeBackgroundAfterTrack = false;
-        els.audio.pause();
-      }
-      state.backgroundUserPaused = false;
-      savePreference(AMBIENT_ENABLED_KEY, "on");
-      await attemptBackgroundPlayback(true);
-    } else {
-      state.backgroundUserPaused = true;
-      state.resumeBackgroundAfterTrack = false;
-      savePreference(AMBIENT_ENABLED_KEY, "off");
-      els.backgroundAudio.pause();
-      setBackgroundControl(false);
-    }
-  });
-  els.backgroundMusicVolume.addEventListener("input", () => {
-    const nextVolume = Math.min(100, Math.max(0, Number(els.backgroundMusicVolume.value) || 0));
-    els.backgroundAudio.volume = nextVolume / 100;
-    savePreference(AMBIENT_VOLUME_KEY, String(nextVolume));
-  });
-  els.backgroundAudio.addEventListener("play", () => setBackgroundControl(true));
-  els.backgroundAudio.addEventListener("pause", () => setBackgroundControl(false));
+  const configuredVolume = Number(config.backgroundVolume ?? 0.28);
+  els.backgroundAudio.volume = Number.isFinite(configuredVolume)
+    ? Math.min(1, Math.max(0, configuredVolume))
+    : 0.28;
   els.backgroundAudio.addEventListener("ended", () => {
-    if (state.backgroundTracks.length > 1 && !state.backgroundUserPaused) loadBackgroundTrack(state.backgroundTrack + 1, true);
+    if (state.backgroundTracks.length > 1) playNextRandomBackgroundTrack(true);
   });
-  els.backgroundAudio.addEventListener("error", () => setBackgroundControl(false, "这首背景音乐暂时无法播放"));
+  els.backgroundAudio.addEventListener("error", () => {
+    if (state.backgroundTracks.length > 1) playNextRandomBackgroundTrack(true);
+  });
 
   const unlockBackground = event => {
-    if (event.target instanceof Element && event.target.closest("#backgroundMusicToggle")) return;
     if (event.type === "keydown" && !["Enter", " ", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
-    if (state.backgroundTracks.length && !state.backgroundUserPaused && els.backgroundAudio.paused && els.audio.paused) {
-      attemptBackgroundPlayback(true);
+    if (state.backgroundTracks.length && els.backgroundAudio.paused && els.audio.paused) {
+      attemptBackgroundPlayback();
     }
   };
   document.addEventListener("pointerdown", unlockBackground, { passive: true });
@@ -551,15 +535,15 @@ function setupPlayer() {
   els.nextTrack.addEventListener("click", () => loadTrack(state.currentTrack + 1, true));
   els.audio.addEventListener("play", () => {
     setPlayIcon(true);
-    if (!els.backgroundAudio.paused) {
+    if (state.backgroundTracks.length) {
       state.resumeBackgroundAfterTrack = true;
-      els.backgroundAudio.pause();
+      if (!els.backgroundAudio.paused) els.backgroundAudio.pause();
     }
   });
   els.audio.addEventListener("pause", () => {
     setPlayIcon(false);
     window.setTimeout(() => {
-      if (els.audio.paused && state.resumeBackgroundAfterTrack && !state.backgroundUserPaused) {
+      if (els.audio.paused && state.resumeBackgroundAfterTrack) {
         state.resumeBackgroundAfterTrack = false;
         attemptBackgroundPlayback();
       }
