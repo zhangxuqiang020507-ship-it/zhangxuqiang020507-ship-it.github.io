@@ -470,11 +470,13 @@ function setLyricMessage(message) {
   els.lyricsPosition.textContent = "0 / 0";
 }
 
-function renderLyric(index) {
+function renderLyric(index, direction = 1) {
   if (!state.lyrics.length) return;
   const visibleIndex = index < 0 ? 0 : index;
   els.lyricCurrent.textContent = state.lyrics[visibleIndex]?.text || "";
+  els.lyricCurrent.style.setProperty("--lyric-progress", "0%");
   els.lyricsPosition.textContent = `${visibleIndex + 1} / ${state.lyrics.length}`;
+  els.skylineLyrics.dataset.lyricDirection = direction < 0 ? "backward" : "forward";
 
   const orbit = [];
   const xByDistance = [0, 30, 44, 56];
@@ -505,10 +507,18 @@ function renderLyric(index) {
   els.lyricsRibbon.replaceChildren(...orbit);
 
   if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    els.lyricsLines.animate([
-      { opacity: 0.58, transform: "translate3d(0,5px,0) scale(.995)" },
-      { opacity: 1, transform: "translate3d(0,0,0) scale(1)" }
-    ], { duration: 480, easing: "cubic-bezier(.2,.8,.2,1)" });
+    els.lyricsRibbon.getAnimations().forEach(animation => animation.cancel());
+    els.lyricCurrent.getAnimations().forEach(animation => animation.cancel());
+    const travel = direction < 0 ? -1 : 1;
+    els.lyricsRibbon.animate([
+      { opacity: 0.35, transform: `translate3d(${travel * 42}px,0,0) rotateY(${travel * -3}deg)` },
+      { opacity: 1, transform: "translate3d(0,0,0) rotateY(0deg)" }
+    ], { duration: 680, easing: "cubic-bezier(.16,1,.3,1)" });
+    els.lyricCurrent.animate([
+      { opacity: 0.08, filter: "blur(6px) drop-shadow(0 5px 12px rgba(0,0,0,.26))", transform: `translate(-50%,calc(-50% + ${travel * 14}px)) translateZ(12px) scale(.955)` },
+      { offset: 0.72, opacity: 1, filter: "blur(0) drop-shadow(0 6px 16px rgba(0,0,0,.42))", transform: `translate(-50%,calc(-50% - ${travel * 2}px)) translateZ(40px) scale(1.012)` },
+      { opacity: 1, filter: "blur(0) drop-shadow(0 5px 12px rgba(0,0,0,.38))", transform: "translate(-50%,-50%) translateZ(34px) scale(1)" }
+    ], { duration: 680, easing: "cubic-bezier(.16,1,.3,1)" });
   }
 }
 
@@ -543,8 +553,9 @@ function updateLyric(currentTime) {
     }
   }
   if (active !== state.activeLyric) {
+    const previousActive = state.activeLyric;
     state.activeLyric = active;
-    renderLyric(active);
+    renderLyric(active, previousActive > active ? -1 : 1);
   }
   updateLyricProgress(currentTime, active);
 }

@@ -30,6 +30,8 @@ python -m http.server 4173
 
 当数据库歌单为空时，网站从 `js/library.js` 读取内置曲库。每首歌由 `assets/music/audio/` 中的原始 MP3、`assets/music/covers/` 中从 MP3 提取的 800×800 WebP 封面，以及 `assets/music/lyrics/` 中的 UTF-8 LRC 歌词组成。播放器按 LRC 时间轴把前后多句铺成可点击跳转的横向歌词轨道，当前句按本句时长显示连续光扫进度，并提供参考汽车风挡式天际屏观感重新设计的沉浸全屏模式；这不是没有逐字时间戳时的伪逐字同步。切歌时首页卡片、播放器封面和歌词动态背景会同步更新。
 
+歌词界面使用按本站曲库字符子集化的 Noto Sans CJK SC 可变字体，本地加载以避免依赖外部字体服务；字体遵循 SIL Open Font License 1.1，许可证见 `assets/fonts/OFL.txt`。
+
 [`scripts/build_music_library.ps1`](./scripts/build_music_library.ps1) 可以从本地 MP3 与同名 LRC 重新生成 80 首曲库、封面和 `js/library.js`。脚本复制音频而不转码，并用 SHA-256 核验复制结果；不要把无公开使用授权的音频或歌词加入曲库。
 
 背景音乐没有可见控制组件，会在页面加载后立即尝试播放；有声自动播放被浏览器拦截时，会在访客第一次点击或使用键盘操作页面时重试。多首已启用背景音乐按随机顺序连续播放，每轮结束后重新洗牌，并避免相邻重复。背景音量由 `js/config.js` 中的 `backgroundVolume` 控制。只应上传自己拥有或获准公开使用的音频文件。

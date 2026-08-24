@@ -1,3 +1,17 @@
+@font-face {
+  font-family: "ZQX Lyric Sans";
+  src: url("./assets/fonts/zqx-lyric-sans.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@property --lyric-progress {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+
 :root {
   --cream: #f4ecde;
   --cream-deep: #e9dcc8;
@@ -19,6 +33,7 @@
   --shadow-soft: 0 12px 25px rgba(82, 59, 39, .11);
   --hand: "STKaiti", "KaiTi", "楷体", "FangSong", serif;
   --sans: "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, sans-serif;
+  --lyric-sans: "ZQX Lyric Sans", "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -210,19 +225,19 @@ input[type="range"]::-webkit-slider-thumb { appearance: none; width: 13px; heigh
 .playlist li:hover,.playlist li.active { background: rgba(127,145,97,.13); }
 .playlist-index,.playlist small { color: var(--muted); }
 
-.skyline-lyrics { position: relative; z-index: 2; min-height: 390px; max-width: 1180px; margin: 10px auto 28px; overflow: hidden; isolation: isolate; border: 1px solid rgba(151,229,242,.24); border-radius: 30px; color: #fff; background: #071218; box-shadow: 0 24px 60px rgba(18,29,34,.3),inset 0 1px rgba(255,255,255,.12); }
+.skyline-lyrics { position: relative; z-index: 2; min-height: 390px; max-width: 1180px; margin: 10px auto 28px; overflow: hidden; isolation: isolate; border: 1px solid rgba(151,229,242,.24); border-radius: 30px; color: #fff; background: #071218; box-shadow: 0 24px 60px rgba(18,29,34,.3),inset 0 1px rgba(255,255,255,.12); font-family: var(--lyric-sans); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 .skyline-backdrop { position: absolute; z-index: -5; inset: -20%; width: 140%; height: 140%; max-width: none; object-fit: cover; opacity: .56; filter: blur(58px) saturate(1.5) brightness(.64); transform: scale(1.06); transition: opacity .55s ease,filter .55s ease; }
-.skyline-lyrics.is-playing .skyline-backdrop { animation: skyline-breathe 12s ease-in-out infinite alternate; }
+.skyline-lyrics.is-playing .skyline-backdrop { animation: skyline-breathe 17s cubic-bezier(.37,0,.63,1) infinite alternate; }
 .skyline-wash { position: absolute; z-index: -4; inset: 0; background: linear-gradient(105deg,rgba(2,9,13,.9),rgba(8,22,29,.64) 48%,rgba(3,10,15,.88)),radial-gradient(circle at 50% 46%,rgba(83,208,231,.15),transparent 42%); }
 .skyline-aurora { position: absolute; z-index: -3; left: 8%; right: 8%; bottom: -26%; height: 54%; border-radius: 50%; background: conic-gradient(from 250deg at 50% 50%,transparent 0 20%,rgba(46,225,255,.78) 31%,rgba(75,131,255,.52) 42%,transparent 57% 100%); opacity: .62; filter: blur(28px); transform: perspective(600px) rotateX(68deg) scaleX(1.18); }
-.skyline-lyrics.is-playing .skyline-aurora { animation: skyline-aurora 7s ease-in-out infinite alternate; }
+.skyline-lyrics.is-playing .skyline-aurora { animation: skyline-aurora 11s cubic-bezier(.37,0,.63,1) infinite alternate; }
 .skyline-content { min-height: 390px; display: grid; grid-template-rows: auto 1fr auto; padding: 22px 28px 19px; }
 .skyline-bar { position: relative; z-index: 8; display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 18px; }
 .skyline-meta { min-width: 0; display: flex; align-items: center; gap: 11px; }
 .skyline-cover { width: 42px; height: 42px; flex: 0 0 auto; border: 1px solid rgba(255,255,255,.18); border-radius: 12px; object-fit: cover; box-shadow: 0 8px 22px rgba(0,0,0,.24); }
 .skyline-meta div { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .skyline-meta span { color: #83eafa; font-size: .61rem; font-weight: 800; letter-spacing: .25em; opacity: .82; }
-.skyline-meta strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--hand); font-size: 1rem; font-weight: 500; }
+.skyline-meta strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--lyric-sans); font-size: .96rem; font-weight: 510; letter-spacing: .015em; }
 .skyline-status { display: inline-flex; align-items: center; gap: 9px; color: rgba(231,247,250,.62); font-size: .66rem; font-variant-numeric: tabular-nums; letter-spacing: .08em; }
 .skyline-status i { width: 3px; height: 3px; border-radius: 50%; background: #60e9ff; box-shadow: 0 0 9px #60e9ff; }
 .skyline-expand { display: inline-flex; align-items: center; gap: 7px; padding: 8px 11px; border: 1px solid rgba(157,231,244,.28); border-radius: 99px; color: #eafcff; background: rgba(124,217,234,.09); cursor: pointer; backdrop-filter: blur(12px); transition: background .2s ease,border-color .2s ease,transform .2s ease; }
@@ -233,31 +248,30 @@ input[type="range"]::-webkit-slider-thumb { appearance: none; width: 13px; heigh
 .skyline-stage::after { content: ""; position: absolute; z-index: 1; left: 13%; right: 13%; bottom: 7%; height: 12px; border-radius: 50%; background: linear-gradient(90deg,transparent,rgba(36,132,255,.18),#4deaff 48%,rgba(52,125,255,.42),transparent); opacity: .72; filter: blur(5px); transform: perspective(500px) rotateX(72deg); box-shadow: 0 0 30px rgba(44,219,255,.55); }
 .skyline-horizon { position: absolute; z-index: 0; left: 50%; top: 50%; width: 62%; height: 88%; border: 1px solid rgba(103,228,247,.08); border-radius: 50%; transform: translate(-50%,-50%) perspective(700px) rotateX(74deg); box-shadow: inset 0 0 70px rgba(55,205,233,.06),0 0 42px rgba(44,190,221,.06); }
 .skyline-ribbon { position: absolute; z-index: 2; inset: 0; transform-style: preserve-3d; }
-.lyric-orbit-line { position: absolute; left: calc(50% + var(--lyric-x)); top: 50%; width: min(27vw,300px); min-width: 150px; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 12px; border: 0; color: rgba(223,245,249,.82); background: transparent; opacity: var(--lyric-opacity); filter: blur(var(--lyric-blur)); transform: translate(-50%,-50%) scale(var(--lyric-scale)); text-align: center; cursor: pointer; transition: color .25s ease,opacity .25s ease,filter .25s ease,transform .25s ease; }
-.lyric-orbit-line span { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: clamp(.78rem,1.35vw,1.08rem); font-weight: 650; line-height: 1.25; text-wrap: balance; }
+.lyric-orbit-line { position: absolute; left: calc(50% + var(--lyric-x)); top: 50%; width: min(27vw,300px); min-width: 150px; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px; border: 0; color: rgba(223,245,249,.82); background: transparent; opacity: var(--lyric-opacity); filter: blur(var(--lyric-blur)); transform: translate(-50%,-50%) scale(var(--lyric-scale)); text-align: center; cursor: pointer; transition: color .3s ease,opacity .3s ease,filter .3s ease,transform .3s cubic-bezier(.16,1,.3,1); }
+.lyric-orbit-line span { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: clamp(.78rem,1.3vw,1.04rem); font-weight: 480; line-height: 1.38; letter-spacing: .012em; text-wrap: balance; }
 .lyric-orbit-line small { color: rgba(143,225,238,.58); font-size: .56rem; font-variant-numeric: tabular-nums; letter-spacing: .08em; }
-.lyric-orbit-line.is-past { color: rgba(79,224,248,.95); animation: skyline-orbit-past .48s cubic-bezier(.2,.8,.2,1); }
-.lyric-orbit-line.is-future { animation: skyline-orbit-future .48s cubic-bezier(.2,.8,.2,1); }
+.lyric-orbit-line.is-past { color: rgba(79,224,248,.95); animation: skyline-orbit-past .62s cubic-bezier(.16,1,.3,1); }
+.lyric-orbit-line.is-future { animation: skyline-orbit-future .62s cubic-bezier(.16,1,.3,1); }
 .lyric-orbit-line:hover,.lyric-orbit-line:focus-visible { z-index: 5; color: #dffbff; opacity: 1; filter: blur(0); outline: 0; transform: translate(-50%,-50%) scale(calc(var(--lyric-scale) + .06)); }
-.lyric-current { --lyric-progress: 0%; position: absolute; z-index: 6; left: 50%; top: 50%; width: min(56%,680px); margin: 0; padding: 24px 12px; transform: translate(-50%,-50%) translateZ(34px); background: linear-gradient(90deg,#55e8ff 0,#baf7ff var(--lyric-progress),rgba(245,251,252,.58) var(--lyric-progress),rgba(245,251,252,.8) 100%); background-clip: text; color: transparent; font-size: clamp(2rem,4.2vw,4.35rem); font-weight: 790; line-height: 1.08; letter-spacing: -.045em; text-align: center; text-wrap: balance; white-space: pre-line; filter: drop-shadow(0 7px 22px rgba(0,0,0,.48)); animation: skyline-current-in .48s cubic-bezier(.2,.8,.2,1); }
+.lyric-current { --lyric-progress: 0%; position: absolute; z-index: 6; left: 50%; top: 50%; width: min(58%,700px); margin: 0; padding: 24px 12px; transform: translate(-50%,-50%) translateZ(34px); background: linear-gradient(90deg,#55e8ff 0,#c7f9ff var(--lyric-progress),rgba(245,251,252,.86) var(--lyric-progress),rgba(245,251,252,.86) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; font-size: clamp(1.95rem,3.95vw,4rem); font-weight: 600; font-variation-settings: "wght" 600; line-height: 1.16; letter-spacing: -.018em; text-align: center; text-wrap: balance; white-space: pre-line; filter: drop-shadow(0 5px 12px rgba(0,0,0,.38)); transition: --lyric-progress .2s linear; will-change: transform,opacity,filter; }
 .skyline-footer { position: relative; z-index: 8; display: grid; grid-template-columns: auto minmax(80px,240px) auto; align-items: center; justify-content: center; gap: 11px; color: rgba(222,243,247,.5); font-size: .6rem; letter-spacing: .08em; }
 .skyline-line-progress { height: 2px; overflow: hidden; border-radius: 99px; background: rgba(220,248,252,.13); }
-.skyline-line-progress i { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#3b8eff,#66efff); box-shadow: 0 0 12px #55e9ff; transition: width .12s linear; }
+.skyline-line-progress i { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#3b8eff,#66efff); box-shadow: 0 0 12px #55e9ff; transition: width .18s linear; }
 .skyline-footer small { color: inherit; font-size: inherit; }
 .skyline-lyrics:fullscreen { width: 100vw; max-width: none; height: 100vh; margin: 0; border: 0; border-radius: 0; }
 .skyline-lyrics:fullscreen .skyline-content { min-height: 100vh; padding: clamp(30px,4vw,62px) clamp(34px,5vw,88px) clamp(25px,3vw,52px); }
 .skyline-lyrics:fullscreen .skyline-cover { width: 58px; height: 58px; border-radius: 16px; }
 .skyline-lyrics:fullscreen .skyline-meta strong { font-size: clamp(1.05rem,1.5vw,1.45rem); }
 .skyline-lyrics:fullscreen .skyline-stage { min-height: 68vh; }
-.skyline-lyrics:fullscreen .lyric-current { width: min(54%,980px); font-size: clamp(3.2rem,6.4vw,8rem); }
+.skyline-lyrics:fullscreen .lyric-current { width: min(58%,1040px); font-size: clamp(3.1rem,5.8vw,7.2rem); }
 .skyline-lyrics:fullscreen .lyric-orbit-line { width: min(25vw,440px); }
 .skyline-lyrics:fullscreen .lyric-orbit-line span { font-size: clamp(1rem,1.6vw,2rem); }
 
-@keyframes skyline-breathe { from { transform: scale(1.06) translate3d(-1%,0,0); } to { transform: scale(1.15) translate3d(1%,-1%,0); } }
-@keyframes skyline-aurora { from { opacity: .48; transform: perspective(600px) rotateX(68deg) scaleX(1.1) translateX(-2%); } to { opacity: .78; transform: perspective(600px) rotateX(68deg) scaleX(1.28) translateX(2%); } }
-@keyframes skyline-orbit-past { from { opacity: 0; transform: translate(calc(-50% + 20px),-50%) scale(var(--lyric-scale)); } }
-@keyframes skyline-orbit-future { from { opacity: 0; transform: translate(calc(-50% - 20px),-50%) scale(var(--lyric-scale)); } }
-@keyframes skyline-current-in { from { opacity: .3; filter: blur(5px) drop-shadow(0 7px 22px rgba(0,0,0,.48)); transform: translate(-50%,calc(-50% + 7px)) translateZ(20px) scale(.97); } }
+@keyframes skyline-breathe { from { transform: scale(1.06) translate3d(-.65%,0,0); } to { transform: scale(1.12) translate3d(.65%,-.6%,0); } }
+@keyframes skyline-aurora { from { opacity: .5; transform: perspective(600px) rotateX(68deg) scaleX(1.12) translateX(-1.25%); } to { opacity: .74; transform: perspective(600px) rotateX(68deg) scaleX(1.23) translateX(1.25%); } }
+@keyframes skyline-orbit-past { from { opacity: 0; filter: blur(5px); transform: translate(calc(-50% + 28px),-50%) scale(var(--lyric-scale)); } }
+@keyframes skyline-orbit-future { from { opacity: 0; filter: blur(5px); transform: translate(calc(-50% - 28px),-50%) scale(var(--lyric-scale)); } }
 
 .empty-state { position: relative; z-index: 2; min-height: 350px; display: grid; place-items: center; align-content: center; text-align: center; color: var(--muted); }
 .empty-state > span { color: var(--sage); font-size: 3rem; }
