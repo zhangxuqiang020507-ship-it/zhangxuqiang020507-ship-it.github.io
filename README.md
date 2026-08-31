@@ -34,6 +34,8 @@ python -m http.server 4173
 
 [`scripts/build_music_library.ps1`](./scripts/build_music_library.ps1) 可以从本地 MP3 与同名 LRC 重新生成 80 首曲库、封面和 `js/library.js`。脚本复制音频而不转码，并用 SHA-256 核验复制结果；不要把无公开使用授权的音频或歌词加入曲库。
 
+内置 MP3 在发布前由 [`scripts/optimize_web_audio.ps1`](./scripts/optimize_web_audio.ps1) 无损整理：脚本只复制原音频帧、保留文字元数据并移除已经单独提供的重复内嵌封面，然后逐首比对音频数据 SHA-256。播放器和背景音乐均使用 `preload="none"`；开始播放普通歌曲前会先暂停背景音乐，避免两个大文件竞争带宽。
+
 背景音乐没有可见控制组件，会在页面加载后立即尝试播放；有声自动播放被浏览器拦截时，会在访客第一次点击或使用键盘操作页面时重试。多首已启用背景音乐按随机顺序连续播放，每轮结束后重新洗牌，并避免相邻重复。背景音量由 `js/config.js` 中的 `backgroundVolume` 控制。只应上传自己拥有或获准公开使用的音频文件。
 
 当数据库没有启用的背景音乐时，网站从 `js/config.js` 的 `defaultBackgroundTracks` 读取内置背景曲目；后台上传并启用的背景音乐会自动优先。内置文件保存在 `assets/audio/background/`，不得加入没有公开使用授权的录音。

@@ -4,6 +4,7 @@ const config = window.SITE_CONFIG ?? {};
 const builtInLibrary = Array.isArray(window.MUSIC_LIBRARY) ? window.MUSIC_LIBRARY : [];
 const BACKGROUND_TRACK_PREFIX = "__SITE_BACKGROUND__:";
 const SITE_SETTING_PREFIX = "__SITE_";
+const BUILT_IN_AUDIO_VERSION = "20260831-startup1";
 const isConfigured = Boolean(
   config.supabaseUrl?.startsWith("https://") &&
   config.supabasePublishableKey &&
@@ -331,6 +332,12 @@ function partitionTracks(rows) {
   return { tracks, backgroundTracks };
 }
 
+function versionBuiltInAudio(url) {
+  const value = String(url || "");
+  if (!value.startsWith("./assets/")) return value;
+  return `${value}${value.includes("?") ? "&" : "?"}v=${BUILT_IN_AUDIO_VERSION}`;
+}
+
 function configuredTracks() {
   return builtInLibrary
     .filter(track => track?.audioUrl)
@@ -340,7 +347,7 @@ function configuredTracks() {
       artist: String(track.artist || "") || null,
       album: String(track.album || "") || null,
       duration: Number(track.duration || 0),
-      audio_url: String(track.audioUrl),
+      audio_url: versionBuiltInAudio(track.audioUrl),
       cover_url: String(track.coverUrl || "") || null,
       lyrics_url: String(track.lyricsUrl || "") || null,
       timed_lyrics: track.timedLyrics !== false,
@@ -362,7 +369,7 @@ function configuredBackgroundTracks() {
       id: `site-default-background-${index}`,
       title: String(track.title || "小站背景音乐"),
       artist: String(track.artist || "") || null,
-      audio_url: String(track.audioUrl),
+      audio_url: versionBuiltInAudio(track.audioUrl),
       enabled: true,
       sort_order: index,
       built_in: true
@@ -723,6 +730,7 @@ function renderPlaylist() {
 
 function loadTrack(index, autoplay = false) {
   if (!state.tracks.length) return;
+  if (autoplay) pauseBackgroundForPlaylist();
   state.currentTrack = (index + state.tracks.length) % state.tracks.length;
   const track = state.tracks[state.currentTrack];
   els.audio.src = track.audio_url;
@@ -757,6 +765,12 @@ function loadTrack(index, autoplay = false) {
 function setPlayIcon(playing) {
   els.playPause.replaceChildren(icon(playing ? "pause" : "play"));
   els.playPause.setAttribute("aria-label", playing ? "暂停" : "播放");
+}
+
+function pauseBackgroundForPlaylist() {
+  if (!state.backgroundTracks.length) return;
+  state.resumeBackgroundAfterTrack = true;
+  if (!els.backgroundAudio.paused) els.backgroundAudio.pause();
 }
 
 function shuffleBackgroundOrder(indices) {
@@ -862,7 +876,10 @@ function setupBackgroundPlayer() {
 function setupPlayer() {
   els.playPause.addEventListener("click", () => {
     if (!state.tracks.length) return;
-    if (els.audio.paused) els.audio.play().catch(() => toast("这首歌暂时无法播放。", "error"));
+    if (els.audio.paused) {
+      pauseBackgroundForPlaylist();
+      els.audio.play().catch(() => toast("这首歌暂时无法播放。", "error"));
+    }
     else els.audio.pause();
   });
   els.prevTrack.addEventListener("click", () => loadTrack(state.currentTrack - 1, true));
