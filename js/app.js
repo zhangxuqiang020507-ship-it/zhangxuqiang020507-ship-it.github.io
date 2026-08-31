@@ -37,6 +37,7 @@ const state = {
   lyrics: [],
   activeLyric: -1,
   lyricStreamAnimation: null,
+  lyricOrbitAnimations: [],
   lyricLoadToken: 0,
   activePhoto: null
 };
@@ -500,6 +501,8 @@ function setLyricMessage(message) {
   state.activeLyric = -1;
   state.lyricStreamAnimation?.cancel();
   state.lyricStreamAnimation = null;
+  state.lyricOrbitAnimations.forEach(animation => animation.cancel());
+  state.lyricOrbitAnimations = [];
   els.lyricsRibbon.replaceChildren();
   els.lyricCurrent.textContent = message;
   els.lyricCompanion.textContent = "";
@@ -521,6 +524,7 @@ function renderLyric(index, direction = 1, previousIndex = -1) {
   els.skylineLyrics.dataset.lyricDirection = direction < 0 ? "backward" : "forward";
 
   const orbit = [];
+  const orbitMotion = [];
   const xByDistance = [0, 24, 41, 59];
   const yByDistance = [50, 49.5, 51, 53];
   const widthByDistance = [0, 30, 40, 54];
@@ -554,19 +558,35 @@ function renderLyric(index, direction = 1, previousIndex = -1) {
       dataset: { lyricIndex: String(lyricIndex), distance: String(distance) },
       attrs: { "aria-label": `跳转到 ${formatClock(line.time)}，${line.text}` }
     }, fragments);
-    node.style.setProperty("--lyric-x", `${(offset < 0 ? -1 : 1) * xByDistance[distance]}%`);
+    const sideSign = offset < 0 ? -1 : 1;
+    const tilt = sideSign * -tiltByDistance[distance];
+    const roll = sideSign * Math.max(0, distance - 1) * 0.6;
+    node.style.setProperty("--lyric-x", `${sideSign * xByDistance[distance]}%`);
     node.style.setProperty("--lyric-y", `${yByDistance[distance]}%`);
     node.style.setProperty("--lyric-width", `${widthByDistance[distance]}vw`);
     node.style.setProperty("--lyric-opacity", String(opacityByDistance[distance]));
     node.style.setProperty("--lyric-scale", String(scaleByDistance[distance]));
     node.style.setProperty("--lyric-blur", `${blurByDistance[distance]}px`);
-    node.style.setProperty("--lyric-tilt", `${(offset < 0 ? 1 : -1) * tiltByDistance[distance]}deg`);
-    node.style.setProperty("--lyric-roll", `${(offset < 0 ? -1 : 1) * Math.max(0, distance - 1) * 0.6}deg`);
+    node.style.setProperty("--lyric-tilt", `${tilt}deg`);
+    node.style.setProperty("--lyric-roll", `${roll}deg`);
     orbit.push(node);
+    orbitMotion.push({
+      node,
+      side,
+      sideSign,
+      distance,
+      opacity: opacityByDistance[distance],
+      scale: scaleByDistance[distance],
+      blur: blurByDistance[distance],
+      tilt,
+      roll
+    });
   }
-  els.lyricsRibbon.replaceChildren(...orbit);
   state.lyricStreamAnimation?.cancel();
   state.lyricStreamAnimation = null;
+  state.lyricOrbitAnimations.forEach(animation => animation.cancel());
+  state.lyricOrbitAnimations = [];
+  els.lyricsRibbon.replaceChildren(...orbit);
 
   if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     els.lyricsRibbon.getAnimations().forEach(animation => animation.cancel());
@@ -576,24 +596,47 @@ function renderLyric(index, direction = 1, previousIndex = -1) {
     const lineEnd = state.lyrics[visibleIndex + 1]?.time ?? ((currentLine?.time || 0) + 5);
     const streamDuration = Math.max(1800, Math.min(9000, (lineEnd - (currentLine?.time || 0)) * 1000));
     const streamAnimation = els.lyricsRibbon.animate([
-      { opacity: 0.2, transform: `translate3d(${travel * 34}px,0,0) rotateY(${travel * -1.6}deg)` },
-      { offset: 0.24, opacity: 1, transform: `translate3d(${travel * 8}px,0,0) rotateY(${travel * -.35}deg)` },
-      { opacity: 1, transform: `translate3d(${travel * -26}px,0,0) rotateY(${travel * .8}deg)` }
-    ], { duration: streamDuration, easing: "linear", fill: "both" });
+      { opacity: 0.72, transform: `translate3d(${travel * 24}px,0,0) rotateY(${travel * -1.1}deg)` },
+      { offset: 0.3, opacity: 1, transform: `translate3d(${travel * 7}px,0,0) rotateY(${travel * -.28}deg)` },
+      { offset: 0.78, opacity: 1, transform: `translate3d(${travel * -13}px,0,0) rotateY(${travel * .4}deg)` },
+      { opacity: 0.94, transform: `translate3d(${travel * -23}px,0,0) rotateY(${travel * .72}deg)` }
+    ], { duration: streamDuration, easing: "cubic-bezier(.37,0,.63,1)", fill: "both" });
     const streamPosition = Math.max(0, Math.min(streamDuration, ((els.audio.currentTime || 0) - (currentLine?.time || 0)) * 1000));
     streamAnimation.currentTime = streamPosition;
     if (els.audio.paused) streamAnimation.pause();
     state.lyricStreamAnimation = streamAnimation;
+    state.lyricOrbitAnimations = orbitMotion.map(item => {
+      const transformAt = (scale, drift) => `translate(-50%,-50%) translate3d(${drift}px,0,0) scale(${scale.toFixed(3)}) rotateY(${item.tilt}deg) rotateZ(${item.roll}deg)`;
+      const keyframes = item.side === "future"
+        ? [
+            { opacity: Math.max(0.04, item.opacity * 0.38), filter: `blur(${(item.blur + 5).toFixed(2)}px)`, transform: transformAt(item.scale * 0.82, item.sideSign * 18) },
+            { offset: 0.34, opacity: Math.min(0.96, item.opacity * 0.82), filter: `blur(${(item.blur + 1.25).toFixed(2)}px)`, transform: transformAt(item.scale * 0.96, item.sideSign * 5) },
+            { opacity: Math.min(0.96, item.opacity * 1.18), filter: `blur(${Math.max(0.08, item.blur * 0.32).toFixed(2)}px)`, transform: transformAt(item.scale * 1.07, item.sideSign * -8) }
+          ]
+        : [
+            { opacity: Math.min(0.96, item.opacity * 1.16), filter: `blur(${Math.max(0, item.blur * 0.2).toFixed(2)}px)`, transform: transformAt(item.scale * 1.06, item.sideSign * -5) },
+            { offset: 0.38, opacity: Math.min(0.9, item.opacity * 0.84), filter: `blur(${(item.blur + 0.85).toFixed(2)}px)`, transform: transformAt(item.scale * 0.96, item.sideSign * 6) },
+            { opacity: Math.max(0.05, item.opacity * 0.28), filter: `blur(${(item.blur + 5).toFixed(2)}px)`, transform: transformAt(item.scale * 0.82, item.sideSign * 18) }
+          ];
+      const animation = item.node.animate(keyframes, {
+        duration: streamDuration,
+        easing: "cubic-bezier(.37,0,.63,1)",
+        fill: "both"
+      });
+      animation.currentTime = streamPosition;
+      if (els.audio.paused) animation.pause();
+      return animation;
+    });
     els.lyricCurrent.animate([
-      { opacity: 0.06, filter: "blur(5px) drop-shadow(0 4px 10px rgba(0,0,0,.24))", transform: `translate(-50%,calc(-50% + ${travel * 34}px)) translateZ(0) scale(.7)` },
-      { offset: 0.7, opacity: 1, filter: "blur(0) drop-shadow(0 5px 13px rgba(0,0,0,.36))", transform: `translate(-50%,calc(-50% - ${travel * 2}px)) translateZ(28px) scale(1.015)` },
+      { opacity: 0.16, filter: "blur(3.2px) drop-shadow(0 4px 10px rgba(0,0,0,.24))", transform: `translate(-50%,-50%) translateY(${travel * 18}px) translateZ(8px) scale(.9)` },
+      { offset: 0.58, opacity: 0.94, filter: "blur(.18px) drop-shadow(0 5px 13px rgba(0,0,0,.36))", transform: `translate(-50%,-50%) translateY(${-travel}px) translateZ(26px) scale(1.008)` },
       { opacity: 1, filter: "blur(0) drop-shadow(0 4px 10px rgba(0,0,0,.34))", transform: "translate(-50%,-50%) translateZ(24px) scale(1)" }
-    ], { duration: 860, easing: "cubic-bezier(.16,1,.3,1)" });
+    ], { duration: 1080, easing: "cubic-bezier(.22,1,.36,1)" });
     if (outgoingLine) {
       els.lyricCompanion.animate([
-        { opacity: 0.86, filter: "blur(0)", transform: "translate(-50%,calc(-50% - 38px)) translateZ(22px) scale(1.72)" },
-        { opacity: 0.42, filter: "blur(.45px)", transform: "translate(-50%,-50%) translateZ(0) scale(1)" }
-      ], { duration: 900, easing: "cubic-bezier(.16,1,.3,1)" });
+        { opacity: 0.66, filter: "blur(.1px)", transform: "translate(-50%,calc(-50% - 18px)) translateZ(12px) scale(1.14)" },
+        { opacity: 0.36, filter: "blur(1.1px)", transform: "translate(-50%,-50%) translateZ(0) scale(.96)" }
+      ], { duration: 1080, easing: "cubic-bezier(.22,1,.36,1)" });
     }
   }
 }
@@ -612,11 +655,12 @@ function updateLyricProgress(currentTime, activeIndex = state.activeLyric) {
   const progressPercent = `${(progress * 100).toFixed(2)}%`;
   els.lyricCurrent.style.setProperty("--lyric-progress", progressPercent);
   els.lyricLineProgress.style.width = progressPercent;
-  if (state.lyricStreamAnimation) {
-    const duration = Number(state.lyricStreamAnimation.effect?.getTiming().duration) || 0;
-    const streamPosition = progress * duration;
-    const animationPosition = Number(state.lyricStreamAnimation.currentTime) || 0;
-    if (Math.abs(animationPosition - streamPosition) > 140) state.lyricStreamAnimation.currentTime = streamPosition;
+  const lyricMotion = [state.lyricStreamAnimation, ...state.lyricOrbitAnimations].filter(Boolean);
+  for (const animation of lyricMotion) {
+    const duration = Number(animation.effect?.getTiming().duration) || 0;
+    const targetPosition = progress * duration;
+    const animationPosition = Number(animation.currentTime) || 0;
+    if (els.audio.paused || Math.abs(animationPosition - targetPosition) > 650) animation.currentTime = targetPosition;
   }
 }
 
@@ -874,6 +918,9 @@ function setupBackgroundPlayer() {
 }
 
 function setupPlayer() {
+  const lyricMotionAnimations = () => [state.lyricStreamAnimation, ...state.lyricOrbitAnimations].filter(Boolean);
+  const playLyricMotion = () => lyricMotionAnimations().forEach(animation => animation.play());
+  const pauseLyricMotion = () => lyricMotionAnimations().forEach(animation => animation.pause());
   els.playPause.addEventListener("click", () => {
     if (!state.tracks.length) return;
     if (els.audio.paused) {
@@ -887,7 +934,7 @@ function setupPlayer() {
   els.audio.addEventListener("play", () => {
     setPlayIcon(true);
     els.skylineLyrics.classList.add("is-playing");
-    state.lyricStreamAnimation?.play();
+    playLyricMotion();
     if (state.backgroundTracks.length) {
       state.resumeBackgroundAfterTrack = true;
       if (!els.backgroundAudio.paused) els.backgroundAudio.pause();
@@ -896,13 +943,20 @@ function setupPlayer() {
   els.audio.addEventListener("pause", () => {
     setPlayIcon(false);
     els.skylineLyrics.classList.remove("is-playing");
-    state.lyricStreamAnimation?.pause();
+    pauseLyricMotion();
     window.setTimeout(() => {
       if (els.audio.paused && state.resumeBackgroundAfterTrack) {
         state.resumeBackgroundAfterTrack = false;
         attemptBackgroundPlayback();
       }
     }, 180);
+  });
+  els.audio.addEventListener("waiting", pauseLyricMotion);
+  els.audio.addEventListener("seeking", pauseLyricMotion);
+  els.audio.addEventListener("playing", playLyricMotion);
+  els.audio.addEventListener("seeked", () => {
+    updateLyric(els.audio.currentTime);
+    if (!els.audio.paused) playLyricMotion();
   });
   els.audio.addEventListener("ended", () => loadTrack(state.currentTrack + 1, true));
   els.audio.addEventListener("loadedmetadata", () => { els.duration.textContent = formatClock(els.audio.duration); });
