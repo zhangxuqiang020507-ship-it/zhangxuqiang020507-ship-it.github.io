@@ -595,6 +595,7 @@ function renderLyric(index, direction = 1, previousIndex = -1) {
     const travel = direction < 0 ? -1 : 1;
     const lineEnd = state.lyrics[visibleIndex + 1]?.time ?? ((currentLine?.time || 0) + 5);
     const streamDuration = Math.max(1800, Math.min(9000, (lineEnd - (currentLine?.time || 0)) * 1000));
+    const currentTransitionDuration = Math.max(1350, Math.min(2200, streamDuration * 0.72));
     const streamAnimation = els.lyricsRibbon.animate([
       { opacity: 0.72, transform: `translate3d(${travel * 24}px,0,0) rotateY(${travel * -1.1}deg)` },
       { offset: 0.3, opacity: 1, transform: `translate3d(${travel * 7}px,0,0) rotateY(${travel * -.28}deg)` },
@@ -628,15 +629,17 @@ function renderLyric(index, direction = 1, previousIndex = -1) {
       return animation;
     });
     els.lyricCurrent.animate([
-      { opacity: 0.16, filter: "blur(3.2px) drop-shadow(0 4px 10px rgba(0,0,0,.24))", transform: `translate(-50%,-50%) translateY(${travel * 18}px) translateZ(8px) scale(.9)` },
-      { offset: 0.58, opacity: 0.94, filter: "blur(.18px) drop-shadow(0 5px 13px rgba(0,0,0,.36))", transform: `translate(-50%,-50%) translateY(${-travel}px) translateZ(26px) scale(1.008)` },
+      { opacity: 0.2, filter: "blur(2.8px) drop-shadow(0 4px 10px rgba(0,0,0,.24))", transform: `translate(-50%,-50%) translateY(${travel * 12}px) translateZ(12px) scale(.95)` },
+      { offset: 0.34, opacity: 0.54, filter: "blur(1.35px) drop-shadow(0 4px 11px rgba(0,0,0,.28))", transform: `translate(-50%,-50%) translateY(${travel * 6}px) translateZ(18px) scale(.975)` },
+      { offset: 0.72, opacity: 0.9, filter: "blur(.28px) drop-shadow(0 5px 13px rgba(0,0,0,.34))", transform: `translate(-50%,-50%) translateY(${travel}px) translateZ(23px) scale(.996)` },
       { opacity: 1, filter: "blur(0) drop-shadow(0 4px 10px rgba(0,0,0,.34))", transform: "translate(-50%,-50%) translateZ(24px) scale(1)" }
-    ], { duration: 1080, easing: "cubic-bezier(.22,1,.36,1)" });
+    ], { duration: currentTransitionDuration, easing: "cubic-bezier(.42,0,.58,1)" });
     if (outgoingLine) {
       els.lyricCompanion.animate([
-        { opacity: 0.66, filter: "blur(.1px)", transform: "translate(-50%,calc(-50% - 18px)) translateZ(12px) scale(1.14)" },
-        { opacity: 0.36, filter: "blur(1.1px)", transform: "translate(-50%,-50%) translateZ(0) scale(.96)" }
-      ], { duration: 1080, easing: "cubic-bezier(.22,1,.36,1)" });
+        { opacity: 0.58, filter: "blur(.15px)", transform: "translate(-50%,calc(-50% - 12px)) translateZ(8px) scale(1.06)" },
+        { offset: 0.58, opacity: 0.4, filter: "blur(.8px)", transform: "translate(-50%,calc(-50% - 3px)) translateZ(2px) scale(.985)" },
+        { opacity: 0.32, filter: "blur(1.25px)", transform: "translate(-50%,-50%) translateZ(0) scale(.96)" }
+      ], { duration: currentTransitionDuration, easing: "cubic-bezier(.42,0,.58,1)", fill: "forwards" });
     }
   }
 }
