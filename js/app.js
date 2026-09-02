@@ -28,7 +28,11 @@ const state = {
   backgroundTracks: [],
   publicComments: [],
   admin: { notes: [], photos: [], tracks: [], backgroundTracks: [], comments: [] },
-  currentTrack: 0,
+  currentTrack: -1,
+  trackQueue: [],
+  trackHistory: [],
+  trackHistoryCursor: -1,
+  trackSignature: "",
   backgroundTrack: -1,
   backgroundQueue: [],
   backgroundSignature: "",
@@ -83,6 +87,7 @@ const els = {
   nextTrack: $("#nextTrack"),
   libraryCount: $("#libraryCount"),
   skylineLyrics: $("#skylineLyrics"),
+  lyricsVideo: $("#lyricsVideo"),
   lyricsBackdrop: $("#lyricsBackdrop"),
   lyricsCover: $("#lyricsCover"),
   lyricsTrackName: $("#lyricsTrackName"),
@@ -248,11 +253,37 @@ function setupNavigation() {
     });
     $$("[data-route]", els.siteNav).forEach(link => link.classList.toggle("active", link.dataset.route === route));
     document.body.dataset.view = route;
+    updateLyricsBackgroundVideo(route);
     document.title = route === "home" ? "张旭强的小站" : `${({ notes: "碎碎念", gallery: "摄影作品", guestbook: "留言板", music: "听歌" })[route]} · 张旭强的小站`;
     window.scrollTo({ top: 0, behavior: "auto" });
   };
   window.addEventListener("hashchange", showRoute);
   showRoute();
+}
+
+const lyricVideoMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+function updateLyricsBackgroundVideo(route = document.body.dataset.view) {
+  if (!els.lyricsVideo) return;
+  const shouldPlay = route === "music" && !document.hidden && !lyricVideoMotion.matches;
+  if (!shouldPlay) {
+    els.lyricsVideo.pause();
+    return;
+  }
+  if (!els.lyricsVideo.hasAttribute("src")) {
+    els.lyricsVideo.src = els.lyricsVideo.dataset.src;
+    els.lyricsVideo.preload = "metadata";
+    els.lyricsVideo.load();
+  }
+  const playback = els.lyricsVideo.play();
+  if (playback?.catch) playback.catch(() => {});
+}
+
+function setupLyricsBackgroundVideo() {
+  const syncPlayback = () => updateLyricsBackgroundVideo();
+  document.addEventListener("visibilitychange", syncPlayback);
+  if (typeof lyricVideoMotion.addEventListener === "function") lyricVideoMotion.addEventListener("change", syncPlayback);
+  else lyricVideoMotion.addListener(syncPlayback);
 }
 
 function setupDialogs() {
@@ -525,17 +556,17 @@ function renderLyric(index, direction = 1, previousIndex = -1) {
 
   const orbit = [];
   const orbitMotion = [];
-  const xByDistance = [0, 24, 41, 59];
-  const yByDistance = [50, 49.5, 51, 53];
-  const widthByDistance = [0, 30, 40, 54];
-  const opacityByDistance = [1, 0.78, 0.57, 0.33];
-  const scaleByDistance = [1, 0.86, 1.03, 1.24];
-  const blurByDistance = [0, 0, 1.6, 4.8];
-  const tiltByDistance = [0, 6, 14, 22];
-  const baseFontByDistance = [0, 0.72, 1.05, 1.48];
-  const fragmentScale = [0.72, 1.3, 0.86, 1.5, 0.68];
-  const fragmentOpacity = [0.46, 1, 0.68, 0.84, 0.4];
-  const fragmentShift = [5, -6, 2, -4, 7];
+  const xByDistance = [0, 22, 40, 57];
+  const yByDistance = [60, 62, 58.5, 54.5];
+  const widthByDistance = [0, 30, 42, 52];
+  const opacityByDistance = [1, 0.78, 0.56, 0.32];
+  const scaleByDistance = [1, 0.88, 1.02, 1.18];
+  const blurByDistance = [0, 0.2, 1.45, 3.7];
+  const tiltByDistance = [0, 5, 12, 19];
+  const baseFontByDistance = [0, 0.7, 0.96, 1.28];
+  const fragmentScale = [0.78, 1.24, 0.9, 1.38, 0.72];
+  const fragmentOpacity = [0.42, 1, 0.64, 0.82, 0.36];
+  const fragmentShift = [4, -5, 1, -3, 6];
   for (const offset of [-3, -2, -1, 1, 2, 3]) {
     const lyricIndex = visibleIndex + offset;
     const line = state.lyrics[lyricIndex];
@@ -610,14 +641,14 @@ function renderLyric(index, direction = 1, previousIndex = -1) {
       const transformAt = (scale, drift) => `translate(-50%,-50%) translate3d(${drift}px,0,0) scale(${scale.toFixed(3)}) rotateY(${item.tilt}deg) rotateZ(${item.roll}deg)`;
       const keyframes = item.side === "future"
         ? [
-            { opacity: Math.max(0.04, item.opacity * 0.38), filter: `blur(${(item.blur + 5).toFixed(2)}px)`, transform: transformAt(item.scale * 0.82, item.sideSign * 18) },
+            { opacity: Math.max(0.06, item.opacity * 0.48), filter: `blur(${(item.blur + 3.8).toFixed(2)}px)`, transform: transformAt(item.scale * 0.82, item.sideSign * 18) },
             { offset: 0.34, opacity: Math.min(0.96, item.opacity * 0.82), filter: `blur(${(item.blur + 1.25).toFixed(2)}px)`, transform: transformAt(item.scale * 0.96, item.sideSign * 5) },
             { opacity: Math.min(0.96, item.opacity * 1.18), filter: `blur(${Math.max(0.08, item.blur * 0.32).toFixed(2)}px)`, transform: transformAt(item.scale * 1.07, item.sideSign * -8) }
           ]
         : [
             { opacity: Math.min(0.96, item.opacity * 1.16), filter: `blur(${Math.max(0, item.blur * 0.2).toFixed(2)}px)`, transform: transformAt(item.scale * 1.06, item.sideSign * -5) },
             { offset: 0.38, opacity: Math.min(0.9, item.opacity * 0.84), filter: `blur(${(item.blur + 0.85).toFixed(2)}px)`, transform: transformAt(item.scale * 0.96, item.sideSign * 6) },
-            { opacity: Math.max(0.05, item.opacity * 0.28), filter: `blur(${(item.blur + 5).toFixed(2)}px)`, transform: transformAt(item.scale * 0.82, item.sideSign * 18) }
+            { opacity: Math.max(0.06, item.opacity * 0.34), filter: `blur(${(item.blur + 3.8).toFixed(2)}px)`, transform: transformAt(item.scale * 0.82, item.sideSign * 18) }
           ];
       const animation = item.node.animate(keyframes, {
         duration: streamDuration,
@@ -628,18 +659,26 @@ function renderLyric(index, direction = 1, previousIndex = -1) {
       if (els.audio.paused) animation.pause();
       return animation;
     });
-    els.lyricCurrent.animate([
-      { opacity: 0.2, filter: "blur(2.8px) drop-shadow(0 4px 10px rgba(0,0,0,.24))", transform: `translate(-50%,-50%) translateY(${travel * 12}px) translateZ(12px) scale(.95)` },
-      { offset: 0.34, opacity: 0.54, filter: "blur(1.35px) drop-shadow(0 4px 11px rgba(0,0,0,.28))", transform: `translate(-50%,-50%) translateY(${travel * 6}px) translateZ(18px) scale(.975)` },
+    const currentAnimation = els.lyricCurrent.animate([
+      { opacity: 0.48, filter: "blur(2.1px) drop-shadow(0 4px 10px rgba(0,0,0,.34))", transform: `translate(-50%,-50%) translateY(${travel * 12}px) translateZ(12px) scale(.95)` },
+      { offset: 0.34, opacity: 0.72, filter: "blur(1.05px) drop-shadow(0 4px 11px rgba(0,0,0,.38))", transform: `translate(-50%,-50%) translateY(${travel * 6}px) translateZ(18px) scale(.975)` },
       { offset: 0.72, opacity: 0.9, filter: "blur(.28px) drop-shadow(0 5px 13px rgba(0,0,0,.34))", transform: `translate(-50%,-50%) translateY(${travel}px) translateZ(23px) scale(.996)` },
       { opacity: 1, filter: "blur(0) drop-shadow(0 4px 10px rgba(0,0,0,.34))", transform: "translate(-50%,-50%) translateZ(24px) scale(1)" }
     ], { duration: currentTransitionDuration, easing: "cubic-bezier(.42,0,.58,1)" });
+    if (els.audio.paused) {
+      currentAnimation.pause();
+      currentAnimation.currentTime = currentTransitionDuration;
+    }
     if (outgoingLine) {
-      els.lyricCompanion.animate([
+      const companionAnimation = els.lyricCompanion.animate([
         { opacity: 0.58, filter: "blur(.15px)", transform: "translate(-50%,calc(-50% - 12px)) translateZ(8px) scale(1.06)" },
         { offset: 0.58, opacity: 0.4, filter: "blur(.8px)", transform: "translate(-50%,calc(-50% - 3px)) translateZ(2px) scale(.985)" },
         { opacity: 0.32, filter: "blur(1.25px)", transform: "translate(-50%,-50%) translateZ(0) scale(.96)" }
       ], { duration: currentTransitionDuration, easing: "cubic-bezier(.42,0,.58,1)", fill: "forwards" });
+      if (els.audio.paused) {
+        companionAnimation.pause();
+        companionAnimation.currentTime = currentTransitionDuration;
+      }
     }
   }
 }
@@ -761,24 +800,94 @@ function renderPlaylist() {
     return;
   }
   els.playPause.disabled = false;
-  els.prevTrack.disabled = state.tracks.length < 2;
-  els.nextTrack.disabled = state.tracks.length < 2;
+  syncTrackShuffleState();
   state.tracks.forEach((track, index) => {
     const row = make("li", { className: index === state.currentTrack ? "active" : "", dataset: { index: String(index) } }, [
       make("span", { className: "playlist-index", text: String(index + 1).padStart(2, "0") }),
       make("span", { text: track.title }),
       make("small", { text: track.artist || "" })
     ]);
-    row.addEventListener("click", () => { loadTrack(index, true); });
+    row.addEventListener("click", () => { loadTrack(index, true, true); });
     els.playlist.append(row);
   });
-  loadTrack(Math.min(state.currentTrack, state.tracks.length - 1), false);
+  if (state.currentTrack < 0 || state.currentTrack >= state.tracks.length) playNextRandomTrack(false);
+  else loadTrack(state.currentTrack, false, false);
 }
 
-function loadTrack(index, autoplay = false) {
+function shuffleTrackOrder(indices) {
+  for (let index = indices.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [indices[index], indices[swapIndex]] = [indices[swapIndex], indices[index]];
+  }
+  if (indices.length > 1 && indices[0] === state.currentTrack) {
+    [indices[0], indices[1]] = [indices[1], indices[0]];
+  }
+  return indices;
+}
+
+function trackCollectionSignature() {
+  return state.tracks.map(track => `${track.id || ""}|${track.audio_url || ""}`).join("||");
+}
+
+function syncTrackShuffleState() {
+  const signature = trackCollectionSignature();
+  if (signature === state.trackSignature) {
+    updateTrackNavigationButtons();
+    return;
+  }
+  state.trackSignature = signature;
+  state.currentTrack = -1;
+  state.trackQueue = [];
+  state.trackHistory = [];
+  state.trackHistoryCursor = -1;
+  refillTrackQueue();
+  updateTrackNavigationButtons();
+}
+
+function refillTrackQueue() {
+  const indices = state.tracks.map((_track, index) => index);
+  state.trackQueue = shuffleTrackOrder(indices.filter(index => index !== state.currentTrack));
+  if (!state.trackQueue.length && indices.length) state.trackQueue = indices;
+}
+
+function rememberTrack(index) {
+  const existing = state.trackHistory[state.trackHistoryCursor];
+  if (existing === index) return;
+  state.trackHistory = state.trackHistory.slice(0, state.trackHistoryCursor + 1);
+  state.trackHistory.push(index);
+  state.trackHistoryCursor = state.trackHistory.length - 1;
+  state.trackQueue = state.trackQueue.filter(candidate => candidate !== index);
+}
+
+function updateTrackNavigationButtons() {
+  els.prevTrack.disabled = state.tracks.length < 2 || state.trackHistoryCursor <= 0;
+  els.nextTrack.disabled = state.tracks.length < 2;
+}
+
+function playNextRandomTrack(autoplay = true) {
+  if (!state.tracks.length) return;
+  if (state.trackHistoryCursor < state.trackHistory.length - 1) {
+    state.trackHistoryCursor += 1;
+    loadTrack(state.trackHistory[state.trackHistoryCursor], autoplay, false);
+    return;
+  }
+  if (!state.trackQueue.length) refillTrackQueue();
+  const nextIndex = state.trackQueue.shift();
+  loadTrack(Number.isInteger(nextIndex) ? nextIndex : 0, autoplay, true);
+}
+
+function playPreviousTrack() {
+  if (state.trackHistoryCursor <= 0) return;
+  state.trackHistoryCursor -= 1;
+  loadTrack(state.trackHistory[state.trackHistoryCursor], true, false);
+}
+
+function loadTrack(index, autoplay = false, recordHistory = true) {
   if (!state.tracks.length) return;
   if (autoplay) pauseBackgroundForPlaylist();
   state.currentTrack = (index + state.tracks.length) % state.tracks.length;
+  if (recordHistory) rememberTrack(state.currentTrack);
+  updateTrackNavigationButtons();
   const track = state.tracks[state.currentTrack];
   els.audio.src = track.audio_url;
   els.currentTime.textContent = "0:00";
@@ -932,8 +1041,8 @@ function setupPlayer() {
     }
     else els.audio.pause();
   });
-  els.prevTrack.addEventListener("click", () => loadTrack(state.currentTrack - 1, true));
-  els.nextTrack.addEventListener("click", () => loadTrack(state.currentTrack + 1, true));
+  els.prevTrack.addEventListener("click", playPreviousTrack);
+  els.nextTrack.addEventListener("click", () => playNextRandomTrack(true));
   els.audio.addEventListener("play", () => {
     setPlayIcon(true);
     els.skylineLyrics.classList.add("is-playing");
@@ -961,7 +1070,7 @@ function setupPlayer() {
     updateLyric(els.audio.currentTime);
     if (!els.audio.paused) playLyricMotion();
   });
-  els.audio.addEventListener("ended", () => loadTrack(state.currentTrack + 1, true));
+  els.audio.addEventListener("ended", () => playNextRandomTrack(true));
   els.audio.addEventListener("loadedmetadata", () => { els.duration.textContent = formatClock(els.audio.duration); });
   els.audio.addEventListener("timeupdate", () => {
     const percent = els.audio.duration ? (els.audio.currentTime / els.audio.duration) * 100 : 0;
@@ -1740,6 +1849,7 @@ function setupAdminForms() {
 }
 
 async function init() {
+  setupLyricsBackgroundVideo();
   setupNavigation();
   setupDialogs();
   setupPlayer();
