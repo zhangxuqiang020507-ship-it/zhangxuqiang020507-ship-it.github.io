@@ -370,8 +370,26 @@ footer .sign{font-family:var(--serif);font-size:16px;color:var(--ink);letter-spa
 
 <script>
 /* ================= 兴趣收藏馆 · 数据保存在浏览器本地 ================= */
-const LS_KEY = 'zxq-museum-v4'; // v4：音乐展厅换成网易云真实歌单
+const LS_KEY = 'zxq-museum-v4'; // v4：音乐展厅换成网易云真实歌单；修复初始化崩溃（种子图片不存 localStorage）
 const LS_LIMIT = 5 * 1024 * 1024; // localStorage 约 5MB
+
+/* 工具函数：放在 state 初始化之前，供 load/save 的报错提示使用 */
+const $ = id => document.getElementById(id);
+const uid = () => 'id-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtDate = d => d ? d.replace(/-/g, '.') : '';
+const no = (i, hall) => 'No.' + String(i + 1).padStart(3, '0');
+
+let toastTimer = null;
+function toast(msg) {
+  const t = $('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
 
 
 function seedData() {
@@ -423,48 +441,56 @@ function seedData() {
 }
 
 let state = load();
+save(); // 初始化完成后再保存：首次打开存精简种子，已存过的顺便做精简迁移
 let currentFilter = '全部';
 let pendingImage = null;   // 表单里待保存的照片 dataURL
 let lightboxId = null;     // 灯箱里正在看的照片 id
 
 function load() {
+  // 清理旧版本 key，给新数据腾出配额
+  try { ['zxq-museum-v1', 'zxq-museum-v2', 'zxq-museum-v3'].forEach(k => localStorage.removeItem(k)); } catch (e) {}
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) {
       const d = JSON.parse(raw);
-      if (d && Array.isArray(d.photos) && Array.isArray(d.music) && Array.isArray(d.collects)) return d;
+      if (d && Array.isArray(d.photos) && Array.isArray(d.music) && Array.isArray(d.collects)) {
+        // 补回种子照片的图片（存储时为省配额去掉了图片数据，图片本来就在页面里）
+        const imgs = {};
+        seedData().photos.forEach(p => { imgs[p.id] = p.img; });
+        d.photos.forEach(p => { if (p && !p.img && imgs[p.id]) p.img = imgs[p.id]; });
+        return d;
+      }
     }
   } catch (e) { /* 本地存储不可用或数据损坏，走种子数据 */ }
-  const s = seedData();
-  save(s);
-  return s;
+  return seedData();
+}
+/* 存储时去掉种子照片的图片数据，只存元数据（图片本来就在页面里），省配额 */
+function compactState(s) {
+  const imgs = {};
+  seedData().photos.forEach(p => { imgs[p.id] = p.img; });
+  return {
+    photos: s.photos.map(p => {
+      if (p && imgs[p.id] && imgs[p.id] === p.img) {
+        const rest = { ...p };
+        delete rest.img;
+        return rest;
+      }
+      return p;
+    }),
+    music: s.music,
+    collects: s.collects
+  };
 }
 function save(s) {
-  state = s || state;
+  if (s) state = s;
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(state));
+    localStorage.setItem(LS_KEY, JSON.stringify(compactState(state)));
   } catch (e) {
-    toast('本地存储空间不足，刚才的修改没有保存下来，建议导出备份后清理。');
+    try { toast('本地存储空间不足，刚才的修改没有保存下来，建议导出备份后清理。'); } catch (_) {}
     return false;
   }
   return true;
 }
-const $ = id => document.getElementById(id);
-const uid = () => 'id-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
-  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const fmtDate = d => d ? d.replace(/-/g, '.') : '';
-const no = (i, hall) => 'No.' + String(i + 1).padStart(3, '0');
-
-let toastTimer = null;
-function toast(msg) {
-  const t = $('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
-}
-
 /* ================= 渲染 ================= */
 function render() {
   renderStats();
