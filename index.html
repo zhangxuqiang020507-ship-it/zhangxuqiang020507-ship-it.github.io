@@ -1,158 +1,786 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="张旭强的个人小站，收集日常碎念、摄影作品和喜欢的声音。">
-  <meta name="theme-color" content="#f5eddf">
-  <title>张旭强的小站</title>
-  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=20260901-skyline2">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="张旭强的个人兴趣收藏馆：摄影、音乐与收藏，慢慢攒，慢慢看。">
+<meta name="theme-color" content="#f6f1e5">
+<title>张旭强的兴趣收藏馆</title>
+<link rel="icon" href="data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23a63d2f'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23fffdf7' font-family='serif'%3E%E8%97%8F%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --paper:#f6f1e5; --paper2:#efe7d3; --card:#fffdf7; --ink:#2b2620; --muted:#8a8172;
+  --line:#e3dac4; --line2:#d8cdb2; --red:#a63d2f; --red-deep:#8c3226; --red-soft:#f6e7e0;
+  --green:#46584c; --shadow:0 1px 3px rgba(43,38,32,.06),0 8px 24px rgba(43,38,32,.06);
+  --serif:"Songti SC","STSong","SimSun",Georgia,"Times New Roman",serif;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.7;
+  -webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:radial-gradient(rgba(43,38,32,.05) 1px,transparent 1px);background-size:22px 22px}
+a{color:var(--red);text-decoration:none}
+a:hover{text-decoration:underline}
+button{font-family:inherit;cursor:pointer}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px;position:relative;z-index:1}
+
+/* ---------- 顶栏 ---------- */
+header{position:sticky;top:0;z-index:50;background:rgba(246,241,229,.9);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topbar{display:flex;align-items:center;gap:14px;height:60px}
+.seal{width:34px;height:34px;flex:none;background:var(--red);color:#fffdf7;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:19px;
+  font-weight:700;letter-spacing:0;box-shadow:0 2px 8px rgba(166,61,47,.35)}
+.brand{font-family:var(--serif);font-size:18px;font-weight:700;letter-spacing:.12em;white-space:nowrap}
+.brand small{display:block;font-family:var(--sans);font-size:10px;font-weight:400;letter-spacing:.32em;
+  color:var(--muted);margin-top:-3px}
+nav{margin-left:auto;display:flex;gap:4px}
+nav a{color:var(--ink);font-size:14px;padding:7px 12px;border-radius:999px}
+nav a:hover{background:var(--paper2);text-decoration:none}
+@media(max-width:640px){nav a{padding:7px 8px;font-size:13px}.brand{font-size:16px}}
+
+/* ---------- 主视觉 ---------- */
+.hero{text-align:center;padding:72px 0 44px}
+.hero .kicker{font-size:12px;letter-spacing:.5em;color:var(--red);font-weight:600;margin-bottom:18px}
+.hero h1{font-family:var(--serif);font-size:clamp(38px,7vw,62px);font-weight:700;letter-spacing:.08em;
+  line-height:1.25}
+.hero h1 em{font-style:normal;color:var(--red)}
+.hero p{color:var(--muted);font-size:15px;margin-top:16px}
+.hero p b{color:var(--ink);font-weight:600}
+.hero-actions{margin-top:26px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.stats{display:flex;justify-content:center;gap:0;margin:40px auto 0;max-width:640px;
+  border-top:1px solid var(--line2);border-bottom:1px solid var(--line2);padding:16px 0}
+.stat{flex:1;text-align:center}
+.stat+.stat{border-left:1px solid var(--line2)}
+.stat b{display:block;font-family:var(--serif);font-size:28px;line-height:1.2}
+.stat span{font-size:12px;color:var(--muted);letter-spacing:.2em}
+
+/* ---------- 按钮 ---------- */
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--ink);background:var(--ink);
+  color:#fffdf7;border-radius:999px;padding:10px 22px;font-size:14px;transition:.18s}
+.btn:hover{background:var(--red-deep);border-color:var(--red-deep)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line2)}
+.btn.ghost:hover{border-color:var(--ink);background:var(--card)}
+.btn.red{background:var(--red);border-color:var(--red)}
+.btn.red:hover{background:var(--red-deep);border-color:var(--red-deep)}
+.btn.small{padding:7px 16px;font-size:13px}
+.btn.danger{background:transparent;color:var(--red);border-color:#e3b8b0}
+.btn.danger:hover{background:var(--red-soft)}
+
+/* ---------- 展厅 ---------- */
+section.hall{padding:44px 0 8px}
+.hall-head{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+.hall-no{font-family:var(--serif);font-size:15px;color:var(--red);border:1px solid var(--red);
+  border-radius:50%;width:38px;height:38px;flex:none;display:flex;align-items:center;
+  justify-content:center;letter-spacing:0}
+.hall-head h2{font-family:var(--serif);font-size:26px;letter-spacing:.1em;line-height:1.3}
+.hall-head .count{font-size:13px;color:var(--muted);padding-bottom:4px}
+.hall-head .btn{margin-left:auto}
+.hall-desc{color:var(--muted);font-size:14px;margin:0 0 22px 52px}
+.rule{height:1px;background:var(--line2);margin:0 0 24px}
+@media(max-width:640px){.hall-desc{margin-left:0}}
+
+/* 筛选 */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:-6px 0 20px 52px}
+.chip{border:1px solid var(--line2);background:var(--card);color:var(--ink);border-radius:999px;
+  padding:6px 16px;font-size:13px}
+.chip.active{background:var(--ink);color:#fffdf7;border-color:var(--ink)}
+@media(max-width:640px){.chips{margin-left:0}}
+
+/* 卡片网格 */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  box-shadow:var(--shadow);transition:transform .18s,box-shadow .18s;position:relative}
+.card:hover{transform:translateY(-3px);box-shadow:0 4px 8px rgba(43,38,32,.07),0 16px 32px rgba(43,38,32,.09)}
+.card .thumb{aspect-ratio:4/3;overflow:hidden;background:var(--paper2);cursor:zoom-in}
+.card .thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s}
+.card:hover .thumb img{transform:scale(1.04)}
+.card-body{padding:16px 18px 18px}
+.card-no{font-size:11px;letter-spacing:.18em;color:var(--muted)}
+.card-no i{font-style:normal;color:var(--red)}
+.card h3{font-family:var(--serif);font-size:18px;margin:6px 0 4px;line-height:1.45}
+.card .meta{font-size:12px;color:var(--muted);letter-spacing:.06em}
+.card .note{font-size:13px;color:#5c5548;margin-top:8px;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.card .actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.mini-btn{border:1px solid var(--line2);background:transparent;border-radius:999px;
+  padding:5px 13px;font-size:12px;color:var(--ink)}
+.mini-btn:hover{border-color:var(--ink)}
+.mini-btn.del:hover{border-color:var(--red);color:var(--red)}
+.tag{display:inline-block;background:var(--paper2);color:#6b6152;border-radius:6px;
+  padding:2px 9px;font-size:12px;margin-bottom:8px}
+.tag.example{background:var(--red-soft);color:var(--red)}
+.music-mark{height:8px;background:linear-gradient(90deg,var(--red) 0 34%,var(--paper2) 34% 38%,
+  var(--green) 38% 61%,var(--paper2) 61% 65%,#c9a86a 65% 100%);opacity:.85}
+.music-body{padding:18px}
+.music-body h3{font-size:20px}
+.music-body .artist{color:var(--muted);font-size:13px;margin-top:2px}
+.empty{border:1.5px dashed var(--line2);border-radius:14px;padding:44px 20px;text-align:center;
+  color:var(--muted);background:rgba(255,253,247,.5)}
+.empty .big{font-family:var(--serif);font-size:20px;color:var(--ink);margin-bottom:6px}
+.empty p{font-size:13px;margin-bottom:18px}
+.flash{animation:flash 1.6s ease}
+@keyframes flash{0%,100%{box-shadow:var(--shadow)}25%{box-shadow:0 0 0 3px var(--red),var(--shadow)}}
+
+/* ---------- 数据管理 ---------- */
+.databox{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  box-shadow:var(--shadow);padding:26px 28px}
+.databox p{font-size:13px;color:var(--muted);margin:6px 0 18px}
+.databox .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.meter{height:8px;background:var(--paper2);border-radius:99px;overflow:hidden;margin-top:18px}
+.meter i{display:block;height:100%;background:var(--green);border-radius:99px;transition:width .3s}
+.meter-label{font-size:12px;color:var(--muted);margin-top:8px}
+
+footer{text-align:center;padding:56px 0 48px;color:var(--muted);font-size:13px}
+footer .sign{font-family:var(--serif);font-size:16px;color:var(--ink);letter-spacing:.2em;margin-bottom:6px}
+
+/* ---------- 弹窗 ---------- */
+.overlay{position:fixed;inset:0;background:rgba(43,38,32,.5);z-index:100;display:none;
+  align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)}
+.overlay.open{display:flex}
+.modal{background:var(--card);border-radius:18px;width:100%;max-width:520px;max-height:90vh;
+  overflow:auto;box-shadow:0 24px 64px rgba(0,0,0,.25);animation:pop .2s ease}
+@keyframes pop{from{transform:scale(.96) translateY(8px);opacity:0}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;
+  padding:20px 24px 0}
+.modal-head h3{font-family:var(--serif);font-size:20px;letter-spacing:.06em}
+.x{border:none;background:transparent;font-size:22px;color:var(--muted);line-height:1;padding:4px}
+.x:hover{color:var(--ink)}
+.modal-body{padding:18px 24px 24px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13px;margin-bottom:6px;color:#5c5548}
+.field input,.field textarea,.field select{width:100%;border:1px solid var(--line2);border-radius:10px;
+  padding:10px 12px;font-size:14px;font-family:inherit;background:#fff;color:var(--ink);outline:none}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--red)}
+.field textarea{resize:vertical;min-height:72px}
+.field .hint{font-size:12px;color:var(--muted);margin-top:5px}
+.upload-box{border:1.5px dashed var(--line2);border-radius:12px;padding:18px;text-align:center;
+  cursor:pointer;background:var(--paper)}
+.upload-box:hover{border-color:var(--red)}
+.upload-box img{max-width:100%;max-height:220px;border-radius:8px;display:block;margin:0 auto}
+.upload-box p{font-size:13px;color:var(--muted);margin-top:8px}
+.modal-foot{display:flex;gap:10px;justify-content:flex-end;padding:0 24px 22px}
+
+/* 灯箱 */
+.lightbox{max-width:920px;width:100%;background:#1d1a16;border-radius:16px;overflow:hidden;
+  animation:pop .2s ease}
+.lightbox img{width:100%;max-height:72vh;object-fit:contain;display:block;background:#14110e}
+.lightbox .cap{padding:18px 22px 20px;color:#efe9db}
+.lightbox .cap h3{font-family:var(--serif);font-size:20px}
+.lightbox .cap .meta{font-size:12px;color:#a89f8d;margin-top:2px}
+.lightbox .cap .note{font-size:13px;color:#cfc7b4;margin-top:8px}
+.lightbox .cap .row{display:flex;gap:8px;margin-top:14px}
+.lightbox .mini-btn{color:#efe9db;border-color:#57503f}
+.lightbox .mini-btn:hover{border-color:#efe9db}
+.lightbox .mini-btn.del:hover{border-color:#e08a7a;color:#e08a7a}
+
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);
+  background:var(--ink);color:#fffdf7;padding:11px 22px;border-radius:999px;font-size:14px;
+  opacity:0;pointer-events:none;transition:.25s;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.25);
+  max-width:88vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
 </head>
 <body>
-  <svg class="svg-sprite" aria-hidden="true">
-    <symbol id="icon-camera" viewBox="0 0 24 24"><path d="M4 7.5h3l1.3-2h7.4l1.3 2h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z"/><circle cx="12" cy="14" r="4"/><path d="M18.5 10.5h.01"/></symbol>
-    <symbol id="icon-home" viewBox="0 0 24 24"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10M9 20v-6h6v6"/></symbol>
-    <symbol id="icon-note" viewBox="0 0 24 24"><path d="M4 20h16M6 16.5 17.5 5a2.1 2.1 0 0 1 3 3L9 19.5 4 20l.5-5Z"/></symbol>
-    <symbol id="icon-message" viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3 1.4-4.2A7 7 0 0 1 3 13V8a5 5 0 0 1 5-5h9a4 4 0 0 1 4 4Z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/></symbol>
-    <symbol id="icon-music" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></symbol>
-    <symbol id="icon-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></symbol>
-    <symbol id="icon-leaf" viewBox="0 0 24 24"><path d="M12 21V9M12 13C5 13 3 8 3 3c6 0 9 3 9 8M12 16c7 0 9-5 9-10-6 0-9 3-9 8"/></symbol>
-    <symbol id="icon-play" viewBox="0 0 24 24"><path d="m9 6 9 6-9 6Z"/></symbol>
-    <symbol id="icon-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
-    <symbol id="icon-prev" viewBox="0 0 24 24"><path d="M6 5v14M18 6l-8 6 8 6Z"/></symbol>
-    <symbol id="icon-next" viewBox="0 0 24 24"><path d="M18 5v14M6 6l8 6-8 6Z"/></symbol>
-    <symbol id="icon-upload" viewBox="0 0 24 24"><path d="M12 16V3M7 8l5-5 5 5M4 15v5h16v-5"/></symbol>
-    <symbol id="icon-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></symbol>
-    <symbol id="icon-close" viewBox="0 0 24 24"><path d="m5 5 14 14M19 5 5 19"/></symbol>
-    <symbol id="icon-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6"/></symbol>
-    <symbol id="icon-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4"/></symbol>
-    <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></symbol>
-    <symbol id="icon-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></symbol>
-  </svg>
 
-  <div class="page-texture" aria-hidden="true"></div>
-  <div class="floating-doodle doodle-star" aria-hidden="true">☆</div>
-  <div class="floating-doodle doodle-paw" aria-hidden="true">🐾 · · ·</div>
-
-  <header class="site-header" id="top" aria-label="网站页眉">
-    <a class="brand" href="#/" data-route="home" aria-label="回到首页">
-      <span class="brand-sketch"><svg><use href="#icon-camera"></use></svg></span>
-      <span class="brand-name">张旭强<small>的小站</small></span>
-      <span class="tiny-paw" aria-hidden="true">🐾</span>
-    </a>
-    <button class="menu-toggle" id="menuToggle" type="button" aria-expanded="false" aria-controls="siteNav">菜单</button>
-    <nav class="site-nav" id="siteNav" aria-label="主要导航">
-      <a class="active" href="#/" data-route="home"><svg><use href="#icon-home"></use></svg>首页</a>
-      <a href="#/notes" data-route="notes"><svg><use href="#icon-note"></use></svg>碎碎念</a>
-      <a href="#/gallery" data-route="gallery"><svg><use href="#icon-camera"></use></svg>摄影作品</a>
-      <a href="#/guestbook" data-route="guestbook"><svg><use href="#icon-message"></use></svg>留言板</a>
-      <a href="#/music" data-route="music"><svg><use href="#icon-music"></use></svg>听歌</a>
+<header>
+  <div class="wrap topbar">
+    <div class="seal">藏</div>
+    <div class="brand">兴趣收藏馆<small>XUQIANG'S COLLECTION</small></div>
+    <nav>
+      <a href="#photos">摄影</a>
+      <a href="#music">音乐</a>
+      <a href="#collects">收藏</a>
+      <a href="#data">数据</a>
     </nav>
-    <div class="owner-actions">
-      <button class="icon-button owner-login-button" id="loginButton" type="button" aria-label="站主登录" title="站主登录"><svg><use href="#icon-lock"></use></svg></button>
-      <button class="button secondary admin-only" id="adminButton" type="button" hidden><svg><use href="#icon-settings"></use></svg>管理小站</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- 主视觉 -->
+  <div class="hero">
+    <div class="kicker">我 的 小 博 物 馆</div>
+    <h1>这里只收藏<br>我<em>喜欢</em>的东西</h1>
+    <p>照片、歌、好文章和好东西 —— 看到喜欢的就收进来，<b>慢慢攒，慢慢看</b>。</p>
+    <div class="hero-actions">
+      <button class="btn red" id="btn-random">🎲 随机逛逛</button>
+      <button class="btn ghost" id="btn-add-photo-hero">＋ 收一张照片</button>
     </div>
-  </header>
+    <div class="stats">
+      <div class="stat"><b id="stat-total">0</b><span>藏品</span></div>
+      <div class="stat"><b id="stat-photos">0</b><span>照片</span></div>
+      <div class="stat"><b id="stat-music">0</b><span>歌曲</span></div>
+      <div class="stat"><b id="stat-collects">0</b><span>收藏</span></div>
+    </div>
+  </div>
 
-  <main class="page-shell">
-    <section class="page-view home-view active" id="homeView" data-view="home" aria-labelledby="heroTitle">
-      <section class="hero paper-card">
-        <div class="tape tape-green hero-tape" aria-hidden="true"></div>
-        <div class="hero-copy"><span class="hand-star" aria-hidden="true">☆</span><p class="eyebrow">WELCOME TO MY LITTLE CORNER</p><h1 id="heroTitle">你好，<span>欢迎来坐坐</span></h1><span class="scribble-line" aria-hidden="true"></span><p class="hero-subtitle">把日常、光影和声音收在这里</p><div class="hero-signature"><span>日常碎片</span><i></i><span>摄影记录</span><i></i><span>正在听</span></div></div>
-        <div class="hero-photo"><img src="./assets/hero-lakeside.png" alt="湖畔夕阳下，一只金毛犬与相机和杯子"><div class="film-edge" aria-hidden="true"><i></i><i></i><i></i><i></i></div></div>
-        <div class="flower-sticker" aria-hidden="true">✿<small>✿</small></div><div class="paw-sticker" aria-hidden="true">🐾</div>
-      </section>
+  <!-- 摄影展厅 -->
+  <section class="hall" id="photos">
+    <div class="hall-head">
+      <div class="hall-no">壹</div>
+      <h2>摄影展厅</h2>
+      <span class="count" id="count-photos"></span>
+      <button class="btn small red" data-add="photos">＋ 添加照片</button>
+    </div>
+    <p class="hall-desc">快门按下的瞬间，都值得被好好收藏。点开照片可以放大查看。</p>
+    <div class="rule"></div>
+    <div class="grid" id="grid-photos"></div>
+  </section>
 
-      <section class="portal-grid" aria-label="进入网站各板块">
-        <a class="portal-card notes-portal" href="#/notes" data-route="notes"><div class="portal-heading"><span>🌱</span><h2>碎碎念</h2></div><div class="paper-stack" aria-hidden="true"><i></i><i></i></div><div class="portal-note"><span class="torn-holes" aria-hidden="true"></span><p id="homeNotePreview">今天也捡到了一点好看的光</p><small id="homeNoteDate">等第一张便签贴上来</small></div><span class="portal-action">翻开看看 <svg><use href="#icon-arrow"></use></svg></span></a>
-        <a class="portal-card gallery-portal" href="#/gallery" data-route="gallery"><div class="portal-heading"><span>📷</span><h2>摄影作品</h2><small id="homePhotoCount">0 张</small></div><div class="mini-polaroids" id="homePhotoPreview" aria-hidden="true"><i></i><i></i><i></i><i></i></div><span class="portal-action">走进相册 <svg><use href="#icon-arrow"></use></svg></span></a>
-        <a class="portal-card guestbook-portal" href="#/guestbook" data-route="guestbook"><div class="portal-heading"><span>💬</span><h2>留言板</h2></div><div class="portal-message"><p>想说点什么……</p><span></span><span></span><span></span></div><div class="portal-button">留下脚印 🐾</div><span class="portal-action">看看大家说了什么 <svg><use href="#icon-arrow"></use></svg></span></a>
-        <a class="portal-card music-portal" href="#/music" data-route="music"><div class="tape tape-blue" aria-hidden="true"></div><div class="portal-heading"><span>♫</span><h2>听歌</h2></div><div class="mini-player"><div class="mini-cover"><img id="homeTrackCover" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" hidden><span>♪</span></div><div class="mini-vinyl"></div><p id="homeTrackPreview">我的小站歌单与背景音乐</p><span class="mini-play-circle" aria-hidden="true"><svg><use href="#icon-play"></use></svg></span></div><span class="portal-action">戴上耳机 <svg><use href="#icon-arrow"></use></svg></span></a>
-      </section>
-    </section>
+  <!-- 音乐展厅 -->
+  <section class="hall" id="music">
+    <div class="hall-head">
+      <div class="hall-no">贰</div>
+      <h2>音乐展厅</h2>
+      <span class="count" id="count-music"></span>
+      <button class="btn small red" data-add="music">＋ 添加歌曲</button>
+    </div>
+    <p class="hall-desc">循环播放的，和只听一次就忘不掉的。附上链接，下次想听一键直达。</p>
+    <div class="rule"></div>
+    <div class="grid" id="grid-music"></div>
+  </section>
 
-    <section class="page-view section-view notes-view" id="notesView" data-view="notes" hidden aria-labelledby="notesTitle">
-      <header class="view-header paper-card"><div><a class="back-home" href="#/" data-route="home">← 回到首页</a><p class="section-kicker">BITS &amp; PIECES</p><h1 id="notesTitle">碎碎念</h1><p>一些不必完整，但值得留下的日常。</p></div><span class="view-icon">🌱</span></header>
-      <section class="paper-card expanded-card notes-board"><div class="pin" aria-hidden="true"></div><div class="notes-list notes-wall" id="notesList" aria-live="polite"></div><div class="empty-state" id="notesEmpty" hidden><span>✎</span><p>还没有写下什么</p><small>等第一张便签贴上来</small></div></section>
-    </section>
+  <!-- 收藏展厅 -->
+  <section class="hall" id="collects">
+    <div class="hall-head">
+      <div class="hall-no">叁</div>
+      <h2>收藏展厅</h2>
+      <span class="count" id="count-collects"></span>
+      <button class="btn small red" data-add="collects">＋ 添加收藏</button>
+    </div>
+    <p class="hall-desc">好文章、好东西、有用的网站，看到就收进来，免得下次找不着。</p>
+    <div class="rule"></div>
+    <div class="chips" id="chips">
+      <button class="chip active" data-filter="全部">全部</button>
+      <button class="chip" data-filter="文章">文章</button>
+      <button class="chip" data-filter="视频">视频</button>
+      <button class="chip" data-filter="好物">好物</button>
+      <button class="chip" data-filter="网站">网站</button>
+      <button class="chip" data-filter="其他">其他</button>
+    </div>
+    <div class="grid" id="grid-collects"></div>
+  </section>
 
-    <section class="page-view section-view gallery-view" id="galleryView" data-view="gallery" hidden aria-labelledby="galleryTitle">
-      <header class="view-header paper-card gallery-heading"><div><a class="back-home" href="#/" data-route="home">← 回到首页</a><p class="section-kicker">THROUGH MY LENS</p><h1 id="galleryTitle">摄影作品</h1><p>用镜头捡起那些差点错过的瞬间。</p></div><span class="film-count" id="photoCount">0 张</span></header>
-      <section class="paper-card expanded-card gallery-board"><div class="tape tape-peach" aria-hidden="true"></div><div class="photo-grid gallery-wall" id="photoGrid" aria-live="polite"></div><div class="empty-state photo-empty" id="photosEmpty" hidden><div class="empty-polaroid"><svg><use href="#icon-camera"></use></svg></div><p>相册还空着</p><small>登录后台后，可以从电脑或手机上传第一张作品</small></div></section>
-    </section>
+  <!-- 数据管理 -->
+  <section class="hall" id="data">
+    <div class="hall-head">
+      <div class="hall-no">✦</div>
+      <h2>数据管理</h2>
+    </div>
+    <p class="hall-desc">所有藏品都保存在你这个浏览器的本地，不会上传到任何服务器。换设备、清缓存会丢失，记得定期导出备份。</p>
+    <div class="rule"></div>
+    <div class="databox">
+      <div class="row">
+        <button class="btn small" id="btn-export">⬇ 导出备份</button>
+        <button class="btn small ghost" id="btn-import">⬆ 导入备份</button>
+        <button class="btn small ghost" id="btn-clear-examples">清空示例藏品</button>
+        <button class="btn small danger" id="btn-clear-all">清空全部</button>
+        <input type="file" id="file-import" accept=".json,application/json" hidden>
+      </div>
+      <div class="meter"><i id="meter-bar" style="width:0%"></i></div>
+      <div class="meter-label" id="meter-label">本地存储用量：计算中…</div>
+      <p style="margin:12px 0 0">小提示：照片上传时会自动压缩到最长边 1600 像素。备份文件是一个 .json，导入到任何设备都能恢复全部藏品。</p>
+    </div>
+  </section>
+</main>
 
-    <section class="page-view section-view guestbook-view" id="guestbookView" data-view="guestbook" hidden aria-labelledby="guestbookTitle">
-      <header class="view-header paper-card"><div><a class="back-home" href="#/" data-route="home">← 回到首页</a><p class="section-kicker">SAY HELLO</p><h1 id="guestbookTitle">留言板</h1><p>路过这里的人，可以留下一点声音。</p></div><span class="view-icon">💬</span></header>
-      <div class="guestbook-layout"><section class="paper-card message-paper"><div class="tape tape-peach small" aria-hidden="true"></div><h2>留下一张小纸条</h2><form class="message-form" id="guestbookForm"><label><span>怎么称呼你</span><input name="nickname" type="text" maxlength="30" autocomplete="nickname" placeholder="你的昵称" required></label><label><span>想说点什么</span><textarea name="content" maxlength="500" rows="6" placeholder="在这里留下一句话……" required></textarea></label><label class="honeypot" aria-hidden="true">网址<input name="website" type="text" tabindex="-1" autocomplete="off"></label><div class="form-footer"><small>留言通过审核后会出现在右边</small><button class="button primary" type="submit">留下脚印 <span aria-hidden="true">🐾</span></button></div></form></section><section class="paper-card message-wall"><h2>墙上的留言</h2><div class="guestbook-list" id="guestbookList"></div></section></div>
-    </section>
+<footer>
+  <div class="sign">馆长 · 张旭强</div>
+  兴趣收藏馆 · 藏品只属于你一个人 · <span id="year"></span>
+</footer>
 
-    <section class="page-view section-view music-view" id="musicView" data-view="music" hidden aria-labelledby="musicTitle">
-      <header class="view-header paper-card music-heading"><div><a class="back-home" href="#/" data-route="home">← 回到首页</a><p class="section-kicker">NOW PLAYING</p><h1 id="musicTitle">听歌</h1><p>收藏在小站里的声音，慢慢听，也慢慢分享。</p></div><span class="view-icon">♫</span></header>
-      <section class="paper-card local-music-card">
-        <div class="tape tape-blue" aria-hidden="true"></div>
-        <div class="local-player-heading"><div><p class="section-kicker">PERSONAL PLAYLIST</p><h2>小站歌单</h2></div><small><span id="libraryCount">80</span> 首 · 随机播放 · 同步歌词</small></div>
-        <div class="player" id="player">
-          <div class="record-wrap"><div class="album-cover" id="albumCover"><span>♫</span></div><div class="vinyl" aria-hidden="true"></div></div>
-          <div class="player-main"><p class="track-label">正在播放</p><h3 id="trackTitle">歌单还是空的</h3><p id="trackArtist">等站主放进第一首歌</p><div class="progress-wrap"><span id="currentTime">0:00</span><input id="progress" type="range" min="0" max="100" value="0" aria-label="播放进度"><span id="duration">0:00</span></div><div class="player-controls"><button class="icon-button" id="prevTrack" type="button" aria-label="上一首"><svg><use href="#icon-prev"></use></svg></button><button class="play-button" id="playPause" type="button" aria-label="播放"><svg><use href="#icon-play"></use></svg></button><button class="icon-button" id="nextTrack" type="button" aria-label="下一首"><svg><use href="#icon-next"></use></svg></button></div></div>
+<!-- 添加 / 编辑弹窗 -->
+<div class="overlay" id="overlay-form">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="form-title">添加藏品</h3>
+      <button class="x" data-close="overlay-form">×</button>
+    </div>
+    <form id="item-form" class="modal-body">
+      <input type="hidden" id="f-id">
+      <input type="hidden" id="f-hall">
+      <div class="field" id="field-image" hidden>
+        <label>照片</label>
+        <div class="upload-box" id="upload-box">
+          <input type="file" id="f-file" accept="image/*" hidden>
+          <img id="f-preview" hidden alt="照片预览">
+          <p id="upload-hint">点击选择照片（JPG / PNG，自动压缩）</p>
         </div>
-        <section class="skyline-lyrics" id="skylineLyrics" aria-label="沉浸式同步歌词">
-          <video class="skyline-video" id="lyricsVideo" data-src="./assets/video/sunset-skyline-loop-v2.mp4" poster="./assets/video/sunset-skyline-source-v2.png" muted loop playsinline preload="none" aria-hidden="true"></video>
-          <img class="skyline-backdrop" id="lyricsBackdrop" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" aria-hidden="true">
-          <div class="skyline-wash" aria-hidden="true"></div>
-          <div class="skyline-aurora" aria-hidden="true"></div>
-          <div class="skyline-content">
-            <header class="skyline-bar">
-              <div class="skyline-meta">
-                <img class="skyline-cover" id="lyricsCover" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" aria-hidden="true">
-                <div><span>SKYLINE LYRICS</span><strong id="lyricsTrackName">等待播放</strong></div>
-              </div>
-              <div class="skyline-status" aria-hidden="true"><span id="lyricsClock">0:00</span><i></i><span id="lyricsPosition">0 / 0</span></div>
-              <button class="skyline-expand" id="lyricsExpand" type="button" aria-label="打开全屏天际歌词">⛶ <span>沉浸歌词</span></button>
-            </header>
-            <div class="skyline-stage" id="lyricsLines" aria-live="off">
-              <div class="skyline-horizon" aria-hidden="true"></div>
-              <div class="skyline-ribbon" id="lyricsRibbon"></div>
-              <p class="lyric-current" id="lyricCurrent">歌词会在这里随音乐流动</p>
-              <p class="lyric-companion" id="lyricCompanion" aria-hidden="true"></p>
-            </div>
-            <footer class="skyline-footer">
-              <span>句内进度</span>
-              <div class="skyline-line-progress" aria-hidden="true"><i id="lyricLineProgress"></i></div>
-              <small>点击两侧歌词可跳转</small>
-            </footer>
-          </div>
-        </section>
-        <ol class="playlist" id="playlist"></ol>
-        <audio id="audioPlayer" preload="none"></audio>
-      </section>
-    </section>
-  </main>
+      </div>
+      <div class="field">
+        <label id="label-title" for="f-title">标题 *</label>
+        <input id="f-title" required maxlength="60" placeholder="给这件藏品起个名字">
+      </div>
+      <div class="field" id="field-place" hidden>
+        <label for="f-place">拍摄地点</label>
+        <input id="f-place" maxlength="40" placeholder="例如：昌黎 · 校园湖边">
+      </div>
+      <div class="field" id="field-date" hidden>
+        <label for="f-date">拍摄日期</label>
+        <input id="f-date" type="date">
+      </div>
+      <div class="field" id="field-artist" hidden>
+        <label for="f-artist">歌手 / 乐队</label>
+        <input id="f-artist" maxlength="40" placeholder="例如：周杰伦">
+      </div>
+      <div class="field" id="field-category" hidden>
+        <label for="f-category">分类</label>
+        <select id="f-category">
+          <option>文章</option><option>视频</option><option>好物</option>
+          <option>网站</option><option>其他</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-note">备注</label>
+        <textarea id="f-note" maxlength="300" placeholder="为什么收藏它？随手记一句"></textarea>
+      </div>
+      <div class="field" id="field-link" hidden>
+        <label for="f-link">链接</label>
+        <input id="f-link" type="url" maxlength="500" placeholder="https://…（选填）">
+        <div class="hint">音乐可以贴网易云 / QQ 音乐的歌曲链接，收藏可以贴文章或商品链接。</div>
+      </div>
+      <div class="modal-foot" style="padding:6px 0 0">
+        <button type="button" class="btn ghost small" data-close="overlay-form">取消</button>
+        <button type="submit" class="btn red small">收进馆里</button>
+      </div>
+    </form>
+  </div>
+</div>
 
-  <audio id="backgroundAudio" preload="none"></audio>
+<!-- 灯箱 -->
+<div class="overlay" id="overlay-lightbox">
+  <div class="lightbox">
+    <img id="lb-img" alt="照片大图">
+    <div class="cap">
+      <h3 id="lb-title"></h3>
+      <div class="meta" id="lb-meta"></div>
+      <div class="note" id="lb-note"></div>
+      <div class="row">
+        <button class="mini-btn" id="lb-edit">编辑</button>
+        <button class="mini-btn del" id="lb-delete">删除</button>
+        <button class="mini-btn" data-close="overlay-lightbox" style="margin-left:auto">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-  <footer class="site-footer"><span>✿</span><p>慢慢记录，慢慢长大</p><a href="#/" data-route="home">回到首页 ↑</a></footer>
+<div class="toast" id="toast"></div>
 
-  <dialog class="modal login-modal" id="loginDialog"><form class="modal-card" id="loginForm" method="dialog"><button class="modal-close icon-button" type="button" data-close-dialog="loginDialog" aria-label="关闭"><svg><use href="#icon-close"></use></svg></button><div class="modal-badge"><svg><use href="#icon-lock"></use></svg></div><p class="section-kicker">OWNER ONLY</p><h2>站主登录</h2><p class="muted">这里只给站主使用。访客不需要登录，也可以留言和评论。</p><label>邮箱<input name="email" type="email" autocomplete="username" required></label><label>密码<input name="password" type="password" autocomplete="current-password" required></label><p class="form-message" id="loginMessage" role="status"></p><button class="button primary full" type="submit">进入管理后台</button></form></dialog>
+<script>
+/* ================= 兴趣收藏馆 · 数据保存在浏览器本地 ================= */
+const LS_KEY = 'zxq-museum-v1';
+const LS_LIMIT = 5 * 1024 * 1024; // localStorage 约 5MB
 
-  <dialog class="modal comments-modal" id="commentsDialog"><div class="modal-card wide"><button class="modal-close icon-button" type="button" data-close-dialog="commentsDialog" aria-label="关闭"><svg><use href="#icon-close"></use></svg></button><p class="section-kicker">COMMENTS</p><h2 id="commentsTitle">说两句</h2><div class="comments-list" id="commentsList"></div><form class="message-form compact" id="commentForm"><input name="targetType" type="hidden"><input name="targetId" type="hidden"><label>昵称<input name="nickname" type="text" maxlength="30" autocomplete="nickname" required></label><label>评论<textarea name="content" maxlength="500" rows="3" required></textarea></label><label class="honeypot" aria-hidden="true">网址<input name="website" type="text" tabindex="-1" autocomplete="off"></label><div class="form-footer"><small>评论通过审核后显示</small><button class="button primary" type="submit">提交评论</button></div></form></div></dialog>
+/* 示例照片：内联 SVG 风景画，换成你自己的照片后可删除 */
+const SVG_SCENES = {
+  sunset: `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600"><defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f7c873"/><stop offset=".55" stop-color="#f08a5c"/><stop offset="1" stop-color="#c65b7c"/></linearGradient><linearGradient id="w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8977a"/><stop offset="1" stop-color="#7c4a72"/></linearGradient></defs><rect width="800" height="600" fill="url(#s)"/><circle cx="400" cy="330" r="90" fill="#fff3c4"/><ellipse cx="400" cy="330" rx="150" ry="26" fill="#fff3c4" opacity=".35"/><rect y="380" width="800" height="220" fill="url(#w)"/><g fill="#fff3c4" opacity=".8"><rect x="330" y="410" width="140" height="6" rx="3"/><rect x="360" y="440" width="80" height="5" rx="2.5"/><rect x="300" y="475" width="200" height="6" rx="3"/><rect x="350" y="510" width="100" height="5" rx="2.5"/></g><path d="M0 380 L140 300 L260 380 Z M560 380 L680 290 L800 380 Z" fill="#5d3a5e"/><path d="M0 600 L0 520 Q200 470 400 520 T800 520 L800 600 Z" fill="#3d2b45"/></svg>`,
+  mountains: `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600"><defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bcd8e8"/><stop offset="1" stop-color="#eef3ea"/></linearGradient></defs><rect width="800" height="600" fill="url(#s)"/><circle cx="620" cy="110" r="52" fill="#fdf6d8"/><path d="M0 420 L180 220 L340 400 L520 180 L800 420 L800 600 L0 600 Z" fill="#7fa08c"/><path d="M0 480 L220 300 L420 470 L620 310 L800 480 L800 600 L0 600 Z" fill="#55755f"/><path d="M0 600 L0 520 Q200 480 400 520 T800 520 L800 600 Z" fill="#3c5a44"/><g fill="#ffffff" opacity=".55"><ellipse cx="220" cy="330" rx="150" ry="22"/><ellipse cx="560" cy="270" rx="180" ry="24"/><ellipse cx="420" cy="430" rx="200" ry="26"/></g></svg>`,
+  night: `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600"><rect width="800" height="600" fill="#1d2733"/><circle cx="640" cy="100" r="44" fill="#f4ead0"/><circle cx="624" cy="88" r="40" fill="#1d2733" opacity=".9"/><g fill="#f4ead0"><circle cx="120" cy="80" r="2.5"/><circle cx="300" cy="50" r="2"/><circle cx="470" cy="130" r="2.5"/><circle cx="220" cy="160" r="2"/><circle cx="540" cy="60" r="2"/></g><g><rect x="60" y="260" width="120" height="340" fill="#2b3648"/><rect x="210" y="180" width="130" height="420" fill="#232e3d"/><rect x="370" y="300" width="110" height="300" fill="#2b3648"/><rect x="510" y="220" width="150" height="380" fill="#232e3d"/><rect x="690" y="320" width="80" height="280" fill="#2b3648"/></g><g fill="#ffd98a"><rect x="80" y="290" width="22" height="16"/><rect x="130" y="330" width="22" height="16"/><rect x="240" y="220" width="22" height="16"/><rect x="290" y="280" width="22" height="16"/><rect x="240" y="360" width="22" height="16"/><rect x="400" y="340" width="22" height="16"/><rect x="540" y="260" width="22" height="16"/><rect x="600" y="330" width="22" height="16"/><rect x="710" y="360" width="22" height="16"/></g><rect y="560" width="800" height="40" fill="#141a22"/></svg>`
+};
+const svgURI = s => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
 
-  <dialog class="modal lightbox-modal" id="photoDialog"><div class="modal-card photo-modal-card"><button class="modal-close icon-button" type="button" data-close-dialog="photoDialog" aria-label="关闭"><svg><use href="#icon-close"></use></svg></button><img id="lightboxImage" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt=""><div class="lightbox-copy"><p class="section-kicker">PHOTOGRAPH</p><h2 id="lightboxTitle">摄影作品</h2><p id="lightboxCaption"></p><p class="photo-meta" id="lightboxMeta"></p><button class="button secondary" id="photoCommentButton" type="button"><svg><use href="#icon-message"></use></svg>评论这张照片</button></div></div></dialog>
+function seedData() {
+  return {
+    photos: [
+      { id: 'ex-p1', title: '湖畔夕阳', place: '示例 · 昌黎', date: '2026-09-02', note: '这是一张示例照片，点“添加照片”换成你自己的作品，示例可以随时删除。', img: svgURI(SVG_SCENES.sunset), isExample: true },
+      { id: 'ex-p2', title: '山间晨雾', place: '示例', date: '2026-09-02', note: '示例照片：清晨的山雾像一层薄纱。', img: svgURI(SVG_SCENES.mountains), isExample: true },
+      { id: 'ex-p3', title: '城市夜灯', place: '示例', date: '2026-09-02', note: '示例照片：华灯初上的时候，整座城都亮起来了。', img: svgURI(SVG_SCENES.night), isExample: true }
+    ],
+    music: [
+      { id: 'ex-m1', title: '晴天', artist: '周杰伦', note: '示例歌曲：刮风这天，我试过握着你手。', link: 'https://music.163.com/#/search/m/?s=晴天', isExample: true },
+      { id: 'ex-m2', title: '起风了', artist: '买辣椒也用券', note: '示例歌曲：从前初识这世间，万般流连。', link: '', isExample: true },
+      { id: 'ex-m3', title: '夜曲', artist: '周杰伦', note: '示例歌曲：为你弹奏肖邦的夜曲。', link: '', isExample: true }
+    ],
+    collects: [
+      { id: 'ex-c1', title: 'Unsplash', category: '网站', note: '免费高质量摄影图片库，没灵感的时候来逛逛。', link: 'https://unsplash.com', isExample: true },
+      { id: 'ex-c2', title: '示例 · 一篇关于摄影构图的好文章', category: '文章', note: '这是一条示例收藏，记得换成你真正读到的好文章。', link: '', isExample: true },
+      { id: 'ex-c3', title: '示例 · 心愿好物', category: '好物', note: '一直想买的那台相机，先记在这里。', link: '', isExample: true }
+    ]
+  };
+}
 
-  <dialog class="modal admin-modal" id="adminDialog"><div class="modal-card admin-panel"><header class="admin-header" aria-label="管理面板页眉"><div><p class="section-kicker">PRIVATE DESK</p><h2>小站管理桌</h2><p class="muted" id="adminIdentity"></p></div><div class="admin-header-actions"><button class="button secondary" id="logoutButton" type="button">退出登录</button><button class="icon-button" type="button" data-close-dialog="adminDialog" aria-label="关闭"><svg><use href="#icon-close"></use></svg></button></div></header><nav class="admin-tabs" aria-label="管理分类"><button class="active" type="button" data-admin-tab="adminNotes">碎碎念</button><button type="button" data-admin-tab="adminPhotos">摄影作品</button><button type="button" data-admin-tab="adminMusic">歌单</button><button type="button" data-admin-tab="adminComments">留言与评论 <span id="pendingBadge"></span></button></nav>
+let state = load();
+let currentFilter = '全部';
+let pendingImage = null;   // 表单里待保存的照片 dataURL
+let lightboxId = null;     // 灯箱里正在看的照片 id
 
-    <section class="admin-section active" id="adminNotes"><form class="admin-form" id="noteForm"><input name="id" type="hidden"><div class="form-title"><h3>写一张新便签</h3><button class="text-button" type="reset">清空</button></div><label>碎碎念<textarea name="body" maxlength="1000" rows="4" placeholder="今天想记下什么……" required></textarea></label><div class="form-row"><label>小图标<input name="mood" type="text" maxlength="4" placeholder="🌱"></label><label class="check-label"><input name="published" type="checkbox" checked>立即公开</label></div><button class="button primary" type="submit">保存碎碎念</button></form><div class="admin-list" id="adminNotesList"></div></section>
+function load() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      if (d && Array.isArray(d.photos) && Array.isArray(d.music) && Array.isArray(d.collects)) return d;
+    }
+  } catch (e) { /* 本地存储不可用或数据损坏，走种子数据 */ }
+  const s = seedData();
+  save(s);
+  return s;
+}
+function save(s) {
+  state = s || state;
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+  } catch (e) {
+    toast('本地存储空间不足，刚才的修改没有保存下来，建议导出备份后清理。');
+    return false;
+  }
+  return true;
+}
+const $ = id => document.getElementById(id);
+const uid = () => 'id-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtDate = d => d ? d.replace(/-/g, '.') : '';
+const no = (i, hall) => 'No.' + String(i + 1).padStart(3, '0');
 
-    <section class="admin-section" id="adminPhotos"><form class="admin-form" id="photoForm"><input name="id" type="hidden"><input name="existingImageUrl" type="hidden"><input name="existingStoragePath" type="hidden"><div class="form-title"><h3>放进一张照片</h3><button class="text-button" type="reset">清空</button></div><label class="file-drop"><svg><use href="#icon-upload"></use></svg><span id="photoFileLabel">选择照片，或拖到这里</span><small id="photoUploadHint">支持 JPG、PNG、WebP、AVIF、HEIC；大图自动压缩</small><input name="file" type="file" accept="image/*,.heic,.heif"></label><img class="upload-preview" id="photoUploadPreview" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="待上传照片预览" hidden><div class="form-row"><label>标题<input name="title" type="text" maxlength="80" required></label><label>拍摄日期<input name="shotAt" type="date"></label></div><label>图片说明<textarea name="caption" maxlength="800" rows="3"></textarea></label><div class="form-row"><label>地点（可不填）<input name="location" type="text" maxlength="80"></label><label>排序<input name="sortOrder" type="number" min="0" value="0"></label></div><label class="check-label"><input name="published" type="checkbox" checked>立即公开</label><button class="button primary" type="submit">保存摄影作品</button></form><div class="admin-list" id="adminPhotosList"></div></section>
+let toastTimer = null;
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
 
-    <section class="admin-section music-admin-section" id="adminMusic"><div class="admin-form-stack"><form class="admin-form background-settings-form" id="backgroundTrackForm"><input name="id" type="hidden"><input name="existingAudioUrl" type="hidden"><input name="existingAudioStoragePath" type="hidden"><div class="form-title"><h3>添加背景音乐</h3><button class="text-button" type="reset">清空</button></div><div class="form-row"><label>歌名<input name="title" type="text" maxlength="120" required></label><label>歌手/备注<input name="artist" type="text" maxlength="90"></label></div><label class="file-drop compact-drop"><svg><use href="#icon-music"></use></svg><span>上传背景音乐</span><small>MP3、M4A、Ogg 或 WAV，单首不超过 30 MB</small><input name="audioFile" type="file" accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/ogg,audio/wav"></label><label>或者填写有权使用的音频直链<input name="audioUrl" type="url" placeholder="https://…"></label><div class="form-row"><label>播放顺序<input name="sortOrder" type="number" min="0" value="0"></label><label class="check-label"><input name="enabled" type="checkbox" checked>启用这首背景音乐</label></div><p class="form-hint">进入网站时会尝试自动播放；若浏览器阻止有声自动播放，会在访客第一次点击页面后开始。请只上传你拥有或获准使用的音频。</p><button class="button primary" type="submit">保存背景音乐</button></form><form class="admin-form bulk-track-form" id="bulkTrackForm"><div class="form-title"><h3>批量导入本地歌曲</h3></div><label class="file-drop"><svg><use href="#icon-upload"></use></svg><span>一次选择多首音频</span><small>按文件名自动建立歌单；MP3、M4A、Ogg 或 WAV，每首不超过 30 MB</small><input name="audioFiles" type="file" accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/ogg,audio/wav" multiple required></label><div class="form-row"><label>起始排序<input name="sortOrder" type="number" min="0" value="0"></label><label class="check-label"><input name="enabled" type="checkbox" checked>导入后立即显示</label></div><p class="form-hint" id="bulkTrackStatus">适合一次导入整组自己拥有或获准使用的歌曲。</p><button class="button primary" type="submit">批量上传到小站</button></form><form class="admin-form" id="trackForm"><input name="id" type="hidden"><input name="existingAudioUrl" type="hidden"><input name="existingAudioStoragePath" type="hidden"><input name="existingCoverUrl" type="hidden"><input name="existingCoverStoragePath" type="hidden"><div class="form-title"><h3>往小站歌单放一首</h3><button class="text-button" type="reset">清空</button></div><div class="form-row"><label>歌名<input name="title" type="text" maxlength="120" required></label><label>歌手/备注<input name="artist" type="text" maxlength="120"></label></div><label class="file-drop compact-drop"><svg><use href="#icon-music"></use></svg><span>上传音频文件</span><small>MP3、M4A、Ogg 或 WAV，单首不超过 30 MB</small><input name="audioFile" type="file" accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/ogg,audio/wav"></label><label>或者填写有权使用的音频直链<input name="audioUrl" type="url" placeholder="https://…"></label><label class="file-drop compact-drop"><svg><use href="#icon-camera"></use></svg><span>可选：上传封面图</span><input name="coverFile" type="file" accept="image/jpeg,image/png,image/webp,image/avif"></label><div class="form-row"><label>排序<input name="sortOrder" type="number" min="0" value="0"></label><label class="check-label"><input name="enabled" type="checkbox" checked>在歌单中显示</label></div><p class="form-hint">请只上传你拥有或获准使用的音频。</p><button class="button primary" type="submit">保存到小站歌单</button></form></div><div class="admin-music-lists"><section><h3>背景音乐</h3><div class="admin-list" id="adminBackgroundTracksList"></div></section><section><h3>小站歌单</h3><div class="admin-list" id="adminTracksList"></div></section></div></section>
+/* ================= 渲染 ================= */
+function render() {
+  renderStats();
+  renderPhotos();
+  renderMusic();
+  renderCollects();
+  renderMeter();
+}
+function renderStats() {
+  $('stat-total').textContent = state.photos.length + state.music.length + state.collects.length;
+  $('stat-photos').textContent = state.photos.length;
+  $('stat-music').textContent = state.music.length;
+  $('stat-collects').textContent = state.collects.length;
+  $('count-photos').textContent = state.photos.length + ' 件';
+  $('count-music').textContent = state.music.length + ' 首';
+  $('count-collects').textContent = state.collects.length + ' 件';
+}
+function emptyHTML(title, desc, hall) {
+  return `<div class="empty" style="grid-column:1/-1"><div class="big">${title}</div><p>${desc}</p>` +
+    `<button class="btn small red" data-add="${hall}">＋ 添加第一件</button></div>`;
+}
+function renderPhotos() {
+  const grid = $('grid-photos');
+  if (!state.photos.length) {
+    grid.innerHTML = emptyHTML('展厅还是空的', '把你拍得最满意的那张照片，先挂上来。', 'photos');
+    return;
+  }
+  grid.innerHTML = state.photos.map((p, i) => `
+    <article class="card" data-card="photos:${p.id}">
+      <div class="thumb" data-action="view" data-id="${p.id}">
+        <img src="${p.img}" alt="${esc(p.title)}" loading="lazy">
+      </div>
+      <div class="card-body">
+        <div class="card-no"><i>壹</i> · ${no(i)} ${p.isExample ? '<span class="tag example">示例</span>' : ''}</div>
+        <h3>${esc(p.title)}</h3>
+        <div class="meta">${esc(p.place || '')}${p.place && p.date ? ' · ' : ''}${fmtDate(p.date)}</div>
+        ${p.note ? `<div class="note">${esc(p.note)}</div>` : ''}
+        <div class="actions">
+          <button class="mini-btn" data-action="edit" data-id="${p.id}">编辑</button>
+          <button class="mini-btn del" data-action="delete" data-id="${p.id}">删除</button>
+        </div>
+      </div>
+    </article>`).join('');
+}
+function renderMusic() {
+  const grid = $('grid-music');
+  if (!state.music.length) {
+    grid.innerHTML = emptyHTML('还没有收录歌曲', '最近单曲循环的那首，先记下来。', 'music');
+    return;
+  }
+  grid.innerHTML = state.music.map((m, i) => `
+    <article class="card" data-card="music:${m.id}">
+      <div class="music-mark"></div>
+      <div class="card-body music-body">
+        <div class="card-no"><i>贰</i> · ${no(i)} ${m.isExample ? '<span class="tag example">示例</span>' : ''}</div>
+        <h3>♪ ${esc(m.title)}</h3>
+        <div class="artist">${esc(m.artist || '未知歌手')}</div>
+        ${m.note ? `<div class="note">${esc(m.note)}</div>` : ''}
+        <div class="actions">
+          ${m.link ? `<a class="mini-btn" href="${esc(m.link)}" target="_blank" rel="noopener">去听 →</a>` : ''}
+          <button class="mini-btn" data-action="edit" data-id="${m.id}">编辑</button>
+          <button class="mini-btn del" data-action="delete" data-id="${m.id}">删除</button>
+        </div>
+      </div>
+    </article>`).join('');
+}
+function renderCollects() {
+  const grid = $('grid-collects');
+  const list = state.collects.filter(c => currentFilter === '全部' || c.category === currentFilter);
+  if (!state.collects.length) {
+    grid.innerHTML = emptyHTML('收藏夹还是空的', '好文章、好东西、有用的网站，看到就收进来。', 'collects');
+    return;
+  }
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="big">这个分类还没有藏品</div><p>换个分类看看，或者新收一件进来。</p></div>`;
+    return;
+  }
+  grid.innerHTML = list.map((c, i) => `
+    <article class="card" data-card="collects:${c.id}">
+      <div class="card-body">
+        <span class="tag">${esc(c.category)}</span>
+        ${c.isExample ? '<span class="tag example">示例</span>' : ''}
+        <div class="card-no"><i>叁</i> · ${no(i)}</div>
+        <h3>${esc(c.title)}</h3>
+        ${c.note ? `<div class="note">${esc(c.note)}</div>` : ''}
+        <div class="actions">
+          ${c.link ? `<a class="mini-btn" href="${esc(c.link)}" target="_blank" rel="noopener">打开链接 →</a>` : ''}
+          <button class="mini-btn" data-action="edit" data-id="${c.id}">编辑</button>
+          <button class="mini-btn del" data-action="delete" data-id="${c.id}">删除</button>
+        </div>
+      </div>
+    </article>`).join('');
+}
+function renderMeter() {
+  let bytes = 0, ok = true;
+  try { bytes = (localStorage.getItem(LS_KEY) || '').length; }
+  catch (e) { ok = false; }
+  const mb = (bytes / 1024 / 1024).toFixed(2);
+  const pct = Math.min(100, Math.round(bytes / LS_LIMIT * 100));
+  $('meter-bar').style.width = pct + '%';
+  $('meter-bar').style.background = pct > 80 ? 'var(--red)' : 'var(--green)';
+  $('meter-label').textContent = ok
+    ? `本地存储用量：约 ${mb} MB / 约 5 MB（${pct}%）`
+    : '本地存储不可用，藏品仅保存在本次打开的页面里';
+}
 
-    <section class="admin-section" id="adminComments"><div class="moderation-toolbar"><p>访客提交后默认等待审核，只有你通过的内容才会公开。</p><button class="button secondary" id="refreshComments" type="button">刷新</button></div><div class="admin-list" id="adminCommentsList"></div></section>
-  </div></dialog>
+/* ================= 增删改 ================= */
+function hallOf(id) {
+  if (state.photos.some(p => p.id === id)) return 'photos';
+  if (state.music.some(m => m.id === id)) return 'music';
+  return 'collects';
+}
+function findItem(hall, id) { return state[hall].find(x => x.id === id); }
 
-  <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
-  <script src="./js/library.js?v=20260831-motion1"></script>
-  <script src="./js/config.js?v=20260831-startup1"></script>
-  <script type="module" src="./js/app.js?v=20260902-shuffle1"></script>
+function openForm(hall, item) {
+  $('f-hall').value = hall;
+  $('f-id').value = item ? item.id : '';
+  $('form-title').textContent = (item ? '编辑' : '添加') +
+    (hall === 'photos' ? '照片' : hall === 'music' ? '歌曲' : '收藏');
+  $('label-title').textContent = hall === 'music' ? '歌名 *' : '标题 *';
+  ['field-image', 'field-place', 'field-date', 'field-artist', 'field-category', 'field-link']
+    .forEach(id => $(id).hidden = true);
+  if (hall === 'photos') ['field-image', 'field-place', 'field-date'].forEach(id => $(id).hidden = false);
+  if (hall === 'music') ['field-artist', 'field-link'].forEach(id => $(id).hidden = false);
+  if (hall === 'collects') ['field-category', 'field-link'].forEach(id => $(id).hidden = false);
+
+  $('f-title').value = item ? item.title : '';
+  $('f-note').value = item ? item.note || '' : '';
+  $('f-place').value = item ? item.place || '' : '';
+  $('f-date').value = item ? item.date || '' : '';
+  $('f-artist').value = item ? item.artist || '' : '';
+  $('f-category').value = item ? item.category || '文章' : '文章';
+  $('f-link').value = item ? item.link || '' : '';
+  $('f-file').value = '';
+  pendingImage = item && item.img ? item.img : null;
+  if (pendingImage) {
+    $('f-preview').src = pendingImage;
+    $('f-preview').hidden = false;
+    $('upload-hint').textContent = '点击更换照片';
+  } else {
+    $('f-preview').hidden = true;
+    $('upload-hint').textContent = '点击选择照片（JPG / PNG，自动压缩）';
+  }
+  openOverlay('overlay-form');
+  setTimeout(() => $('f-title').focus(), 60);
+}
+
+function saveFromForm(ev) {
+  ev.preventDefault();
+  const hall = $('f-hall').value;
+  const id = $('f-id').value || uid();
+  const title = $('f-title').value.trim();
+  if (!title) { toast('先给藏品起个标题吧'); return; }
+  let item;
+  if (hall === 'photos') {
+    if (!pendingImage) { toast('先选一张照片'); return; }
+    item = { id, title, place: $('f-place').value.trim(), date: $('f-date').value,
+      note: $('f-note').value.trim(), img: pendingImage };
+  } else if (hall === 'music') {
+    item = { id, title, artist: $('f-artist').value.trim(), note: $('f-note').value.trim(),
+      link: $('f-link').value.trim() };
+  } else {
+    item = { id, title, category: $('f-category').value, note: $('f-note').value.trim(),
+      link: $('f-link').value.trim() };
+  }
+  const list = state[hall];
+  const idx = list.findIndex(x => x.id === id);
+  if (idx >= 0) list[idx] = { ...list[idx], ...item, isExample: false };
+  else list.unshift({ ...item, isExample: false });
+  if (save()) { closeOverlay('overlay-form'); render(); toast('已收进馆里 ✓'); }
+}
+
+function deleteItem(hall, id) {
+  const item = findItem(hall, id);
+  if (!item) return;
+  if (!confirm(`确定把「${item.title}」移出收藏馆吗？`)) return;
+  state[hall] = state[hall].filter(x => x.id !== id);
+  if (save()) { render(); toast('已移出收藏馆'); }
+}
+
+/* 照片压缩：最长边 1600px，JPEG 0.82 */
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 1600;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(cv.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ================= 灯箱 & 随机逛逛 ================= */
+function openLightbox(id) {
+  const p = findItem('photos', id);
+  if (!p) return;
+  lightboxId = id;
+  $('lb-img').src = p.img;
+  $('lb-title').textContent = p.title;
+  $('lb-meta').textContent = [p.place, fmtDate(p.date)].filter(Boolean).join(' · ');
+  $('lb-note').textContent = p.note || '';
+  $('lb-note').style.display = p.note ? '' : 'none';
+  openOverlay('overlay-lightbox');
+}
+function randomVisit() {
+  const all = [
+    ...state.photos.map(p => ({ hall: 'photos', id: p.id })),
+    ...state.music.map(m => ({ hall: 'music', id: m.id })),
+    ...state.collects.map(c => ({ hall: 'collects', id: c.id }))
+  ];
+  if (!all.length) { toast('馆里还是空的，先收一件藏品吧'); return; }
+  const pick = all[Math.floor(Math.random() * all.length)];
+  if (pick.hall === 'photos') { openLightbox(pick.id); return; }
+  const el = document.querySelector(`[data-card="${pick.hall}:${pick.id}"]`);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.remove('flash');
+    void el.offsetWidth;
+    el.classList.add('flash');
+  }
+}
+
+/* ================= 备份 ================= */
+function exportBackup() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  const d = new Date();
+  const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+  a.href = URL.createObjectURL(blob);
+  a.download = `兴趣收藏馆备份-${stamp}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('备份已下载，收好它');
+}
+function importBackup(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const d = JSON.parse(reader.result);
+      if (!d || !Array.isArray(d.photos) || !Array.isArray(d.music) || !Array.isArray(d.collects)) {
+        toast('这个文件不是收藏馆的备份'); return;
+      }
+      if (!confirm(`导入后将替换现在全部 ${state.photos.length + state.music.length + state.collects.length} 件藏品，确定吗？`)) return;
+      if (save(d)) { render(); toast('备份已恢复 ✓'); }
+    } catch (e) { toast('备份文件读不出来，检查一下文件是否完整'); }
+  };
+  reader.readAsText(file);
+}
+
+/* ================= 弹窗工具 ================= */
+function openOverlay(id) { $(id).classList.add('open'); document.body.style.overflow = 'hidden'; }
+function closeOverlay(id) { $(id).classList.remove('open'); document.body.style.overflow = ''; }
+
+/* ================= 事件绑定 ================= */
+document.addEventListener('click', ev => {
+  const addBtn = ev.target.closest('[data-add]');
+  if (addBtn) { openForm(addBtn.dataset.add, null); return; }
+  const closeBtn = ev.target.closest('[data-close]');
+  if (closeBtn) { closeOverlay(closeBtn.dataset.close); return; }
+  const act = ev.target.closest('[data-action]');
+  if (act) {
+    const { action, id } = act.dataset;
+    const hall = hallOf(id);
+    if (action === 'view') openLightbox(id);
+    if (action === 'edit') { closeOverlay('overlay-lightbox'); openForm(hall, findItem(hall, id)); }
+    if (action === 'delete') deleteItem(hall, id);
+  }
+  const chip = ev.target.closest('.chip');
+  if (chip) {
+    currentFilter = chip.dataset.filter;
+    document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c === chip));
+    renderCollects();
+  }
+});
+document.querySelectorAll('.overlay').forEach(o =>
+  o.addEventListener('click', ev => { if (ev.target === o) closeOverlay(o.id); }));
+document.addEventListener('keydown', ev => {
+  if (ev.key === 'Escape') document.querySelectorAll('.overlay.open').forEach(o => closeOverlay(o.id));
+});
+
+$('item-form').addEventListener('submit', saveFromForm);
+$('upload-box').addEventListener('click', () => $('f-file').click());
+$('f-file').addEventListener('change', async ev => {
+  const file = ev.target.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { toast('请选择图片文件'); return; }
+  $('upload-hint').textContent = '压缩中…';
+  try {
+    pendingImage = await compressImage(file);
+    $('f-preview').src = pendingImage;
+    $('f-preview').hidden = false;
+    $('upload-hint').textContent = '点击更换照片';
+  } catch (e) { toast('这张照片读不出来，换一张试试'); $('upload-hint').textContent = '点击选择照片（JPG / PNG，自动压缩）'; }
+});
+$('lb-edit').addEventListener('click', () => {
+  const p = findItem('photos', lightboxId);
+  if (p) { closeOverlay('overlay-lightbox'); openForm('photos', p); }
+});
+$('lb-delete').addEventListener('click', () => {
+  if (!lightboxId) return;
+  closeOverlay('overlay-lightbox');
+  deleteItem('photos', lightboxId);
+});
+$('btn-random').addEventListener('click', randomVisit);
+$('btn-add-photo-hero').addEventListener('click', () => openForm('photos', null));
+$('btn-export').addEventListener('click', exportBackup);
+$('btn-import').addEventListener('click', () => $('file-import').click());
+$('file-import').addEventListener('change', ev => {
+  if (ev.target.files[0]) importBackup(ev.target.files[0]);
+  ev.target.value = '';
+});
+$('btn-clear-examples').addEventListener('click', () => {
+  const n = [...state.photos, ...state.music, ...state.collects].filter(x => x.isExample).length;
+  if (!n) { toast('已经没有示例藏品了'); return; }
+  if (!confirm(`确定清空 ${n} 件示例藏品吗？你自己添加的不受影响。`)) return;
+  ['photos', 'music', 'collects'].forEach(h => state[h] = state[h].filter(x => !x.isExample));
+  if (save()) { render(); toast('示例已清空，展厅归你了'); }
+});
+$('btn-clear-all').addEventListener('click', () => {
+  if (!confirm('确定清空全部藏品吗？此操作无法撤销，建议先导出备份。')) return;
+  state = { photos: [], music: [], collects: [] };
+  if (save()) { render(); toast('收藏馆已清空'); }
+});
+
+$('year').textContent = new Date().getFullYear();
+render();
+</script>
 </body>
 </html>
